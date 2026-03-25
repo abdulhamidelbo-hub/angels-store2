@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 
 # Base URL from frontend environment
-BASE_URL = "https://islamic-admin.preview.emergentagent.com/api"
+BASE_URL = "https://adkar-golden.preview.emergentagent.com/api"
 
 class AdminAPITester:
     def __init__(self):

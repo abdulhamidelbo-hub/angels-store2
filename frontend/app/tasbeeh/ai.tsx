@@ -1,19 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   TextInput,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   Alert,
+  StatusBar,
+  Pressable,
+  Keyboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../src/constants/colors';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
+  FadeInDown,
+  FadeIn,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { THEME } from '../../src/constants/theme';
 import { apiService } from '../../src/services/api';
 
 interface Message {
@@ -23,12 +38,109 @@ interface Message {
   timestamp: Date;
 }
 
+const TypingIndicator: React.FC = () => {
+  const dot1 = useSharedValue(0);
+  const dot2 = useSharedValue(0);
+  const dot3 = useSharedValue(0);
+
+  useEffect(() => {
+    dot1.value = withRepeat(
+      withSequence(
+        withTiming(-5, { duration: 300 }),
+        withTiming(0, { duration: 300 })
+      ),
+      -1
+    );
+    dot2.value = withRepeat(
+      withSequence(
+        withTiming(0, { duration: 150 }),
+        withTiming(-5, { duration: 300 }),
+        withTiming(0, { duration: 300 })
+      ),
+      -1
+    );
+    dot3.value = withRepeat(
+      withSequence(
+        withTiming(0, { duration: 300 }),
+        withTiming(-5, { duration: 300 }),
+        withTiming(0, { duration: 300 })
+      ),
+      -1
+    );
+  }, []);
+
+  const dot1Style = useAnimatedStyle(() => ({
+    transform: [{ translateY: dot1.value }],
+  }));
+  const dot2Style = useAnimatedStyle(() => ({
+    transform: [{ translateY: dot2.value }],
+  }));
+  const dot3Style = useAnimatedStyle(() => ({
+    transform: [{ translateY: dot3.value }],
+  }));
+
+  return (
+    <View style={styles.typingContainer}>
+      <View style={styles.aiAvatar}>
+        <Ionicons name="sparkles" size={18} color="#FFFFFF" />
+      </View>
+      <View style={styles.typingBubble}>
+        <Animated.View style={[styles.dot, dot1Style]} />
+        <Animated.View style={[styles.dot, dot2Style]} />
+        <Animated.View style={[styles.dot, dot3Style]} />
+      </View>
+    </View>
+  );
+};
+
+const MessageBubble: React.FC<{ message: Message; index: number }> = ({ message, index }) => {
+  return (
+    <Animated.View
+      entering={FadeInDown.delay(index * 50).springify()}
+      style={[
+        styles.messageContainer,
+        message.isUser ? styles.userMessage : styles.aiMessage,
+      ]}
+    >
+      {!message.isUser && (
+        <LinearGradient
+          colors={THEME.gradients.primary}
+          style={styles.aiAvatar}
+        >
+          <Ionicons name="sparkles" size={18} color="#FFFFFF" />
+        </LinearGradient>
+      )}
+      <View
+        style={[
+          styles.messageBubble,
+          message.isUser ? styles.userBubble : styles.aiBubble,
+        ]}
+      >
+        {message.isUser ? (
+          <LinearGradient
+            colors={THEME.gradients.primary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.userBubbleGradient}
+          >
+            <Text style={styles.userText}>{message.text}</Text>
+          </LinearGradient>
+        ) : (
+          <Text style={styles.aiText}>{message.text}</Text>
+        )}
+      </View>
+    </Animated.View>
+  );
+};
+
 export default function AITasbeehScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const scrollViewRef = useRef<ScrollView>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'السلام عليكم! أنا مساعدك الذكي للأذكار. كيف يمكنني مساعدتك اليوم؟',
+      text: 'السلام عليكم! أنا مساعدك الذكي للأذكار. يمكنني مساعدتك في:\n\n• البحث عن أذكار معينة\n• شرح معاني الأدعية\n• ترجمة الأذكار\n• إرشادك للأذكار المناسبة\n\nكيف يمكنني مساعدتك اليوم؟',
       isUser: false,
       timestamp: new Date(),
     },
@@ -38,6 +150,9 @@ export default function AITasbeehScreen() {
 
   const sendMessage = async () => {
     if (!inputText.trim()) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Keyboard.dismiss();
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -50,6 +165,11 @@ export default function AITasbeehScreen() {
     setInputText('');
     setLoading(true);
 
+    // Scroll to bottom
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+
     try {
       const response = await apiService.sendAIMessage(inputText);
       
@@ -61,182 +181,209 @@ export default function AITasbeehScreen() {
       };
 
       setMessages((prev) => [...prev, aiMessage]);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error('Error sending message:', error);
       Alert.alert('خطأ', 'حدث خطأ أثناء الإرسال');
     } finally {
       setLoading(false);
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     }
   };
 
-  const renderMessage = (message: Message) => (
-    <View
-      key={message.id}
-      style={[
-        styles.messageContainer,
-        message.isUser ? styles.userMessage : styles.aiMessage,
-      ]}
-    >
-      {!message.isUser && (
-        <View style={styles.aiAvatar}>
-          <Ionicons name="sparkles" size={20} color="#FFFFFF" />
-        </View>
-      )}
-      <View
-        style={[
-          styles.messageBubble,
-          message.isUser ? styles.userBubble : styles.aiBubble,
-        ]}
-      >
-        <Text
-          style={[
-            styles.messageText,
-            message.isUser ? styles.userText : styles.aiText,
-          ]}
-        >
-          {message.text}
-        </Text>
-      </View>
-    </View>
-  );
+  const clearChat = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    setMessages([
+      {
+        id: '1',
+        text: 'السلام عليكم! كيف يمكنني مساعدتك؟',
+        isUser: false,
+        timestamp: new Date(),
+      },
+    ]);
+  };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
+      <LinearGradient
+        colors={['#667EEA', '#764BA2']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
+      >
+        <Animated.View
+          entering={FadeIn.springify()}
+          style={styles.headerContent}
         >
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <View style={styles.aiIcon}>
-            <Ionicons name="sparkles" size={20} color={COLORS.primary} />
+          <Pressable
+            style={({ pressed }) => [
+              styles.headerButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={() => {
+              Haptics.selectionAsync();
+              router.back();
+            }}
+          >
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </Pressable>
+          <View style={styles.headerCenter}>
+            <View style={styles.aiIconHeader}>
+              <Ionicons name="sparkles" size={18} color="#FFFFFF" />
+            </View>
+            <Text style={styles.headerTitle}>المساعد الذكي</Text>
           </View>
-          <Text style={styles.headerTitle}>المساعد الذكي</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.clearButton}
-          onPress={() => {
-            setMessages([
-              {
-                id: '1',
-                text: 'السلام عليكم! كيف يمكنني مساعدتك؟',
-                isUser: false,
-                timestamp: new Date(),
-              },
-            ]);
-          }}
-        >
-          <Ionicons name="trash-outline" size={20} color={COLORS.textSecondary} />
-        </TouchableOpacity>
-      </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.headerButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={clearChat}
+          >
+            <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
+          </Pressable>
+        </Animated.View>
+      </LinearGradient>
 
       {/* Messages */}
       <KeyboardAvoidingView
         style={styles.chatContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={90}
+        keyboardVerticalOffset={0}
       >
         <ScrollView
+          ref={scrollViewRef}
           style={styles.messagesContainer}
           contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
         >
-          {messages.map(renderMessage)}
-          {loading && (
-            <View style={styles.loadingContainer}>
-              <View style={styles.aiAvatar}>
-                <Ionicons name="sparkles" size={20} color="#FFFFFF" />
-              </View>
-              <View style={styles.loadingBubble}>
-                <Text style={styles.loadingText}>جاري الكتابة...</Text>
-              </View>
-            </View>
-          )}
+          {messages.map((message, index) => (
+            <MessageBubble key={message.id} message={message} index={index} />
+          ))}
+          {loading && <TypingIndicator />}
         </ScrollView>
 
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          {['أذكار الصباح', 'أذكار المساء', 'دعاء الاستخارة'].map((action) => (
+            <Pressable
+              key={action}
+              style={({ pressed }) => [
+                styles.quickAction,
+                pressed && styles.quickActionPressed,
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setInputText(action);
+              }}
+            >
+              <Text style={styles.quickActionText}>{action}</Text>
+            </Pressable>
+          ))}
+        </View>
+
         {/* Input */}
-        <View style={styles.inputContainer}>
-          <TouchableOpacity
-            style={styles.micButton}
+        <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.micButton,
+              pressed && styles.buttonPressed,
+            ]}
             onPress={() => {
+              Haptics.selectionAsync();
               Alert.alert('قريباً', 'سيتم إضافة الإدخال الصوتي قريباً');
             }}
           >
-            <Ionicons name="mic" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
+            <Ionicons name="mic" size={22} color={THEME.colors.primary} />
+          </Pressable>
           <TextInput
             style={styles.input}
             placeholder="اكتب رسالتك..."
-            placeholderTextColor={COLORS.textSecondary}
+            placeholderTextColor={THEME.colors.textMuted}
             value={inputText}
             onChangeText={setInputText}
             onSubmitEditing={sendMessage}
             multiline
           />
-          <TouchableOpacity
-            style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+          <Pressable
+            style={({ pressed }) => [
+              styles.sendButton,
+              !inputText.trim() && styles.sendButtonDisabled,
+              pressed && inputText.trim() && styles.sendButtonPressed,
+            ]}
             onPress={sendMessage}
             disabled={!inputText.trim() || loading}
           >
-            <Ionicons
-              name="send"
-              size={20}
-              color={inputText.trim() ? '#FFFFFF' : COLORS.textSecondary}
-            />
-          </TouchableOpacity>
+            <LinearGradient
+              colors={inputText.trim() ? ['#667EEA', '#764BA2'] : [THEME.colors.border, THEME.colors.border]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.sendButtonGradient}
+            >
+              <Ionicons
+                name="send"
+                size={18}
+                color={inputText.trim() ? '#FFFFFF' : THEME.colors.textMuted}
+              />
+            </LinearGradient>
+          </Pressable>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: THEME.colors.background,
   },
   header: {
+    paddingHorizontal: THEME.spacing.md,
+    paddingBottom: THEME.spacing.lg,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
-  backButton: {
-    width: 40,
-    height: 40,
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  buttonPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.95 }],
   },
   headerCenter: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  aiIcon: {
+  aiIconHeader: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
+    marginRight: THEME.spacing.sm,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
-  clearButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   chatContainer: {
     flex: 1,
@@ -245,11 +392,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   messagesContent: {
-    padding: 20,
+    padding: THEME.spacing.md,
   },
   messageContainer: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: THEME.spacing.md,
   },
   userMessage: {
     justifyContent: 'flex-end',
@@ -261,86 +408,126 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: THEME.spacing.sm,
   },
   messageBubble: {
-    maxWidth: '75%',
-    borderRadius: 16,
-    padding: 12,
+    maxWidth: '78%',
+    borderRadius: THEME.borderRadius.lg,
+    overflow: 'hidden',
   },
   userBubble: {
-    backgroundColor: COLORS.primary,
     borderBottomRightRadius: 4,
   },
-  aiBubble: {
-    backgroundColor: '#FFFFFF',
-    borderBottomLeftRadius: 4,
+  userBubbleGradient: {
+    padding: THEME.spacing.md,
   },
-  messageText: {
-    fontSize: 16,
-    lineHeight: 22,
+  aiBubble: {
+    backgroundColor: THEME.colors.surface,
+    borderBottomLeftRadius: 4,
+    padding: THEME.spacing.md,
+    ...THEME.shadows.small,
   },
   userText: {
+    fontSize: 16,
+    lineHeight: 24,
     color: '#FFFFFF',
   },
   aiText: {
-    color: COLORS.text,
+    fontSize: 16,
+    lineHeight: 24,
+    color: THEME.colors.text,
   },
-  loadingContainer: {
+  typingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: THEME.spacing.md,
   },
-  loadingBubble: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
+  typingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.borderRadius.lg,
+    paddingHorizontal: THEME.spacing.md,
+    paddingVertical: THEME.spacing.sm,
+    ...THEME.shadows.small,
   },
-  loadingText: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
-    fontStyle: 'italic',
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: THEME.colors.textMuted,
+    marginHorizontal: 3,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    paddingHorizontal: THEME.spacing.md,
+    paddingVertical: THEME.spacing.sm,
+    gap: THEME.spacing.sm,
+  },
+  quickAction: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.borderRadius.md,
+    paddingHorizontal: THEME.spacing.md,
+    paddingVertical: THEME.spacing.sm,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  quickActionPressed: {
+    backgroundColor: THEME.colors.background,
+  },
+  quickActionText: {
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
+    fontWeight: '500',
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    alignItems: 'flex-end',
+    paddingHorizontal: THEME.spacing.md,
+    paddingTop: THEME.spacing.sm,
+    backgroundColor: THEME.colors.surface,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: THEME.colors.border,
   },
   micButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: THEME.colors.primary + '12',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
+    marginRight: THEME.spacing.sm,
   },
   input: {
     flex: 1,
-    minHeight: 40,
+    minHeight: 44,
     maxHeight: 100,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    backgroundColor: THEME.colors.background,
+    borderRadius: THEME.borderRadius.lg,
+    paddingHorizontal: THEME.spacing.md,
+    paddingVertical: 12,
     fontSize: 16,
-    color: COLORS.text,
+    color: THEME.colors.text,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginLeft: THEME.spacing.sm,
+    overflow: 'hidden',
+  },
+  sendButtonGradient: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
   },
   sendButtonDisabled: {
-    backgroundColor: COLORS.border,
+    opacity: 0.6,
+  },
+  sendButtonPressed: {
+    transform: [{ scale: 0.95 }],
   },
 });

@@ -1,211 +1,324 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useApp } from '../../src/contexts/AppContext';
-import { Card } from '../../src/components/Common';
-import { COLORS } from '../../src/constants/colors';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  Dimensions,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { THEME } from '../../src/constants/theme';
+import { useApp } from '../../src/contexts/AppContext';
+
+const { width } = Dimensions.get('window');
+
+interface StatBoxProps {
+  title: string;
+  value: number;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+}
+
+const StatBox: React.FC<StatBoxProps> = ({ title, value, icon, color }) => {
+  return (
+    <View style={styles.statBox}>
+      <View style={[styles.statBoxInner, { backgroundColor: color }]}>
+        <View style={styles.statIconContainer}>
+          <Ionicons name={icon} size={24} color="#FFFFFF" />
+        </View>
+        <Text style={styles.statValue}>{value}</Text>
+        <Text style={styles.statTitle}>{title}</Text>
+      </View>
+    </View>
+  );
+};
+
+interface ProgressBarProps {
+  progress: number;
+  label: string;
+  color: string;
+}
+
+const ProgressBar: React.FC<ProgressBarProps> = ({ progress, label, color }) => {
+  return (
+    <View style={styles.progressContainer}>
+      <View style={styles.progressHeader}>
+        <Text style={styles.progressLabel}>{label}</Text>
+        <Text style={styles.progressValue}>{Math.round(progress)}%</Text>
+      </View>
+      <View style={styles.progressBg}>
+        <View style={[styles.progressFill, { backgroundColor: color, width: `${progress}%` }]} />
+      </View>
+    </View>
+  );
+};
 
 export default function StatsScreen() {
+  const insets = useSafeAreaInsets();
   const { todayStats } = useApp();
 
-  const statCards = [
+  const stats = [
     {
-      title: 'إجمالي التسبيحات',
+      title: 'تسبيحات اليوم',
       value: todayStats?.total_tasbeeh || 0,
-      icon: 'flash',
-      color: COLORS.primary,
-    },
-    {
-      title: 'عد باللمس',
-      value: todayStats?.touch_tasbeeh_count || 0,
-      icon: 'hand-left',
-      color: COLORS.accent,
-    },
-    {
-      title: 'عد بالصوت',
-      value: todayStats?.voice_tasbeeh_count || 0,
-      icon: 'mic',
-      color: COLORS.secondary,
-    },
-    {
-      title: 'مساعد ذكي',
-      value: todayStats?.ai_tasbeeh_count || 0,
-      icon: 'sparkles',
-      color: '#FF6B6B',
+      icon: 'heart' as const,
+      color: THEME.colors.primary,
     },
     {
       title: 'نقاط XP',
       value: todayStats?.xp_earned || 0,
-      icon: 'star',
-      color: '#FFD700',
+      icon: 'star' as const,
+      color: THEME.colors.gold,
     },
     {
       title: 'أذكار مكتملة',
       value: todayStats?.completed_azkar_count || 0,
-      icon: 'checkmark-circle',
-      color: '#4CAF50',
+      icon: 'checkmark-circle' as const,
+      color: '#00B894',
+    },
+    {
+      title: 'سلسلة الأيام',
+      value: todayStats?.streak_days || 0,
+      icon: 'flame' as const,
+      color: '#FF6B6B',
     },
   ];
 
+  const achievements = [
+    { label: 'أذكار الصباح', progress: 75, color: THEME.colors.primary },
+    { label: 'أذكار المساء', progress: 60, color: '#764BA2' },
+    { label: 'تحدي الأسبوع', progress: 40, color: THEME.colors.gold },
+    { label: 'هدف الشهر', progress: 25, color: '#FF6B6B' },
+  ];
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>إحصائيات اليوم</Text>
-        <Text style={styles.headerSubtitle}>تتبع تقدمك اليومي</Text>
-      </View>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
+      {/* Header */}
+      <LinearGradient
+        colors={THEME.gradients.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
+      >
+        <Animated.View entering={FadeInDown.springify()}>
+          <Text style={styles.headerTitle}>إحصائياتي</Text>
+          <Text style={styles.headerSubtitle}>تتبع تقدمك اليومي</Text>
+        </Animated.View>
+      </LinearGradient>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.grid}>
-          {statCards.map((stat, index) => (
-            <View key={index} style={styles.statCard}>
-              <View
-                style={[styles.statIcon, { backgroundColor: stat.color + '20' }]}
-              >
-                <Ionicons name={stat.icon as any} size={28} color={stat.color} />
-              </View>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statTitle}>{stat.title}</Text>
-            </View>
+        {/* Stats Grid */}
+        <View style={styles.statsGrid}>
+          {stats.map((stat, index) => (
+            <StatBox
+              key={stat.title}
+              title={stat.title}
+              value={stat.value}
+              icon={stat.icon}
+              color={stat.color}
+            />
           ))}
         </View>
 
-        {/* Progress Card */}
-        <Card style={styles.progressCard}>
-          <Text style={styles.progressTitle}>تقدمك اليوم</Text>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${Math.min(
-                    ((todayStats?.total_tasbeeh || 0) / 100) * 100,
-                    100
-                  )}%`,
-                },
-              ]}
-            />
+        {/* Achievements Section */}
+        <Animated.View
+          entering={FadeInDown.delay(400).springify()}
+          style={styles.section}
+        >
+          <Text style={styles.sectionTitle}>تقدم الإنجازات</Text>
+          <View style={styles.achievementsCard}>
+            {achievements.map((achievement) => (
+              <ProgressBar
+                key={achievement.label}
+                label={achievement.label}
+                progress={achievement.progress}
+                color={achievement.color}
+              />
+            ))}
           </View>
-          <Text style={styles.progressText}>
-            {todayStats?.total_tasbeeh || 0} / 100 تسبيحة
-          </Text>
-        </Card>
+        </Animated.View>
 
-        {/* Motivational Card */}
-        <Card style={styles.motivationalCard}>
-          <Ionicons name="heart" size={32} color={COLORS.primary} />
-          <Text style={styles.motivationalText}>
-            بارك الله فيك! استمر في الذكر واجمع المزيد من الحسنات
-          </Text>
-        </Card>
+        {/* Weekly Summary */}
+        <Animated.View
+          entering={FadeInDown.delay(600).springify()}
+          style={styles.section}
+        >
+          <Text style={styles.sectionTitle}>ملخص الأسبوع</Text>
+          <View style={styles.weeklyCard}>
+            <View style={styles.weeklyRow}>
+              {['الس', 'الأ', 'الث', 'الر', 'الخ', 'الج', 'الس'].map((day, index) => (
+                <View key={index} style={styles.weeklyDay}>
+                  <View
+                    style={[
+                      styles.weeklyDot,
+                      index < 4 && styles.weeklyDotActive,
+                      index === 3 && styles.weeklyDotToday,
+                    ]}
+                  >
+                    {index < 4 && (
+                      <Ionicons
+                        name="checkmark"
+                        size={12}
+                        color="#FFFFFF"
+                      />
+                    )}
+                  </View>
+                  <Text style={styles.weeklyDayText}>{day}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </Animated.View>
+
+        <View style={{ height: 100 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: THEME.colors.background,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    paddingHorizontal: THEME.spacing.md,
+    paddingBottom: THEME.spacing.lg,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.text,
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.85)',
   },
   scrollContent: {
-    padding: 20,
+    padding: THEME.spacing.md,
+    paddingTop: THEME.spacing.lg,
   },
-  grid: {
+  statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: THEME.spacing.lg,
   },
-  statCard: {
-    width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+  statBox: {
+    width: (width - THEME.spacing.md * 2 - THEME.spacing.sm) / 2,
+    marginBottom: THEME.spacing.sm,
   },
-  statIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  statBoxInner: {
+    borderRadius: THEME.borderRadius.lg,
+    padding: THEME.spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    height: 130,
+  },
+  statIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: THEME.spacing.sm,
   },
   statValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 4,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 2,
   },
   statTitle: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '500',
   },
-  progressCard: {
-    marginBottom: 16,
+  section: {
+    marginBottom: THEME.spacing.lg,
   },
-  progressTitle: {
+  sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 12,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginBottom: THEME.spacing.md,
   },
-  progressBar: {
-    width: '100%',
-    height: 12,
-    backgroundColor: COLORS.border,
-    borderRadius: 6,
+  achievementsCard: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.borderRadius.lg,
+    padding: THEME.spacing.md,
+  },
+  progressContainer: {
+    marginBottom: THEME.spacing.md,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: THEME.spacing.xs,
+  },
+  progressLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: THEME.colors.text,
+  },
+  progressValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.textSecondary,
+  },
+  progressBg: {
+    height: 8,
+    backgroundColor: THEME.colors.border,
+    borderRadius: 4,
     overflow: 'hidden',
-    marginBottom: 8,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: COLORS.primary,
-    borderRadius: 6,
+    borderRadius: 4,
   },
-  progressText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
+  weeklyCard: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.borderRadius.lg,
+    padding: THEME.spacing.lg,
   },
-  motivationalCard: {
+  weeklyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  weeklyDay: {
     alignItems: 'center',
-    paddingVertical: 24,
   },
-  motivationalText: {
-    fontSize: 16,
-    color: COLORS.text,
-    textAlign: 'center',
-    marginTop: 12,
-    lineHeight: 24,
+  weeklyDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: THEME.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: THEME.spacing.xs,
+  },
+  weeklyDotActive: {
+    backgroundColor: THEME.colors.primary,
+  },
+  weeklyDotToday: {
+    backgroundColor: THEME.colors.gold,
+  },
+  weeklyDayText: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    fontWeight: '500',
   },
 });

@@ -4,25 +4,41 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   RefreshControl,
+  StatusBar,
+  Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../../src/components/Common';
-import { COLORS } from '../../src/constants/colors';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  Easing,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { THEME } from '../../src/constants/theme';
 import { apiService } from '../../src/services/api';
 import { Category } from '../../src/types';
+import { CategoryCard } from '../../src/components/ui';
 
 export default function CategoriesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+
+  // Animation values
+  const headerOpacity = useSharedValue(0);
 
   useEffect(() => {
     loadCategories();
+    headerOpacity.value = withTiming(1, { duration: 500 });
   }, []);
 
   const loadCategories = async () => {
@@ -38,9 +54,14 @@ export default function CategoriesScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await loadCategories();
     setRefreshing(false);
   };
+
+  const headerStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+  }));
 
   const getIconName = (categoryId: number): keyof typeof Ionicons.glyphMap => {
     const iconMap: Record<number, keyof typeof Ionicons.glyphMap> = {
@@ -48,7 +69,7 @@ export default function CategoriesScreen() {
       2: 'moon',
       3: 'book',
       4: 'bed',
-      5: 'sunrise',
+      5: 'sunny-outline',
       6: 'restaurant',
       7: 'home',
       8: 'water',
@@ -62,85 +83,139 @@ export default function CategoriesScreen() {
     return iconMap[categoryId] || 'book';
   };
 
-  const renderCategory = ({ item }: { item: Category }) => (
-    <TouchableOpacity
-      style={styles.categoryCard}
-      onPress={() => router.push(`/categories/${item.id}`)}
-      activeOpacity={0.7}
-    >
-      <View
-        style={[
-          styles.iconContainer,
-          { backgroundColor: `#${item.color_hex}20` },
-        ]}
-      >
-        <Ionicons
-          name={getIconName(item.id)}
-          size={32}
-          color={`#${item.color_hex}`}
-        />
-      </View>
-      <View style={styles.categoryContent}>
-        <Text style={styles.categoryTitle}>{item.name_ar}</Text>
-        <Text style={styles.categorySubtitle}>{item.name_en}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={24} color={COLORS.textSecondary} />
-    </TouchableOpacity>
+  const toggleViewMode = () => {
+    Haptics.selectionAsync();
+    setViewMode((prev) => (prev === 'list' ? 'grid' : 'list'));
+  };
+
+  const renderCategory = ({ item, index }: { item: Category; index: number }) => (
+    <CategoryCard
+      id={item.id}
+      nameAr={item.name_ar}
+      nameEn={item.name_en}
+      icon={getIconName(item.id)}
+      color={`#${item.color_hex}`}
+      count={item.azkar_count}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        router.push(`/categories/${item.id}`);
+      }}
+      delay={index * 60}
+      variant={viewMode}
+    />
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <LinearGradient
+          colors={THEME.gradients.header}
+          style={[styles.header, { paddingTop: insets.top + 8 }]}
+        >
+          <Text style={styles.headerTitle}>تصنيفات الأذكار</Text>
+        </LinearGradient>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>جاري التحميل...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>تصنيفات الأذكار</Text>
-        <Text style={styles.headerSubtitle}>اختر من 14 تصنيف</Text>
-      </View>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Gradient Header */}
+      <LinearGradient
+        colors={THEME.gradients.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
+      >
+        <Animated.View style={[styles.headerContent, headerStyle]}>
+          <View>
+            <Text style={styles.headerTitle}>تصنيفات الأذكار</Text>
+            <Text style={styles.headerSubtitle}>{categories.length} تصنيف متاح</Text>
+          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.viewModeButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={toggleViewMode}
+          >
+            <Ionicons
+              name={viewMode === 'list' ? 'grid' : 'list'}
+              size={22}
+              color="#FFFFFF"
+            />
+          </Pressable>
+        </Animated.View>
+      </LinearGradient>
 
       <FlatList
         data={categories}
         renderItem={renderCategory}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContent}
+        numColumns={viewMode === 'grid' ? 2 : 1}
+        key={viewMode}
+        contentContainerStyle={[
+          styles.listContent,
+          viewMode === 'grid' && styles.gridContent,
+        ]}
+        columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={THEME.colors.primary}
+            colors={[THEME.colors.primary]}
+          />
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: THEME.colors.background,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    paddingHorizontal: THEME.spacing.md,
+    paddingBottom: THEME.spacing.lg,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.text,
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  viewModeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.95 }],
   },
   loadingContainer: {
     flex: 1,
@@ -149,43 +224,16 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: COLORS.textSecondary,
+    color: THEME.colors.textSecondary,
   },
   listContent: {
-    padding: 20,
+    padding: THEME.spacing.md,
+    paddingTop: THEME.spacing.lg,
   },
-  categoryCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+  gridContent: {
+    paddingHorizontal: THEME.spacing.md,
   },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  categoryContent: {
-    flex: 1,
-  },
-  categoryTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  categorySubtitle: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
+  gridRow: {
+    justifyContent: 'space-between',
   },
 });

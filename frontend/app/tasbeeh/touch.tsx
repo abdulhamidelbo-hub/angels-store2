@@ -1,33 +1,45 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  StatusBar,
+  Pressable,
   Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  Easing,
+  FadeIn,
+  FadeInDown,
+} from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { COLORS } from '../../src/constants/colors';
+import { THEME } from '../../src/constants/theme';
 import { apiService } from '../../src/services/api';
 import { useApp } from '../../src/contexts/AppContext';
-import { Counter } from '../../src/components/Common';
+import { AnimatedCounter } from '../../src/components/ui';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 export default function TouchTasbeehScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { refreshStats } = useApp();
   const [count, setCount] = useState(0);
   const [target, setTarget] = useState(33);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleIncrement = async () => {
-    // Haptic feedback
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
+  // Animation values
+  const headerScale = useSharedValue(1);
+
+  const handleIncrement = useCallback(() => {
     const newCount = count + 1;
     setCount(newCount);
 
@@ -35,21 +47,15 @@ export default function TouchTasbeehScreen() {
     if (newCount % 10 === 0) {
       saveProgress(10);
     }
+  }, [count]);
 
-    // Celebration haptic on target
-    if (newCount === target) {
-      await Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Success
-      );
-    }
-  };
-
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     if (count > 0) {
-      saveProgress(count);
+      saveProgress(count % 10);
     }
     setCount(0);
-  };
+  }, [count]);
 
   const saveProgress = async (countToSave: number) => {
     if (isSaving || countToSave === 0) return;
@@ -71,172 +77,269 @@ export default function TouchTasbeehScreen() {
   // Save progress when leaving screen
   useEffect(() => {
     return () => {
-      if (count > 0) {
-        saveProgress(count);
+      const remaining = count % 10;
+      if (remaining > 0) {
+        apiService.recordTasbeeh({
+          method: 'touch',
+          count: remaining,
+        });
       }
     };
   }, [count]);
 
+  const targets = [33, 99, 100, 1000];
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>العد باللمس</Text>
-        <TouchableOpacity
-          style={styles.settingsButton}
-          onPress={() => {
-            // Show target picker
-          }}
-        >
-          <Ionicons name="settings-outline" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-      </View>
+      <LinearGradient
+        colors={THEME.gradients.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
+      >
+        <View style={styles.headerContent}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.headerButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={() => {
+              Haptics.selectionAsync();
+              router.back();
+            }}
+          >
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </Pressable>
+          <Text style={styles.headerTitle}>العد باللمس</Text>
+          <View style={styles.headerPlaceholder} />
+        </View>
+      </LinearGradient>
 
       {/* Main Content */}
       <View style={styles.content}>
-        <View style={styles.counterContainer}>
-          <Counter
+        {/* Counter */}
+        <Animated.View
+          entering={FadeInDown.delay(200).springify()}
+          style={styles.counterContainer}
+        >
+          <AnimatedCounter
             count={count}
             target={target}
             onIncrement={handleIncrement}
             onReset={handleReset}
-            size="large"
           />
-        </View>
+        </Animated.View>
 
         {/* Tips */}
-        <View style={styles.tipsContainer}>
-          <Ionicons name="information-circle" size={20} color={COLORS.primary} />
-          <Text style={styles.tipsText}>
-            اضغط على الدائرة للتسبيح • سيهتز الهاتف مع كل ضغطة
-          </Text>
-        </View>
+        <Animated.View
+          entering={FadeInDown.delay(400).springify()}
+          style={styles.tipsContainer}
+        >
+          <LinearGradient
+            colors={[THEME.colors.primary + '15', THEME.colors.primary + '08']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.tipsGradient}
+          >
+            <Ionicons name="information-circle" size={20} color={THEME.colors.primary} />
+            <Text style={styles.tipsText}>
+              اضغط على الدائرة للتسبيح • سيهتز الهاتف مع كل ضغطة
+            </Text>
+          </LinearGradient>
+        </Animated.View>
 
-        {/* Quick Targets */}
-        <View style={styles.quickTargets}>
-          <Text style={styles.quickTargetsTitle}>أهداف سريعة:</Text>
+        {/* Target Selector */}
+        <Animated.View
+          entering={FadeInDown.delay(600).springify()}
+          style={styles.targetSection}
+        >
+          <Text style={styles.targetTitle}>اختر الهدف:</Text>
           <View style={styles.targetsRow}>
-            {[33, 100, 300, 1000].map((targetValue) => (
-              <TouchableOpacity
-                key={targetValue}
-                style={[
+            {targets.map((t) => (
+              <Pressable
+                key={t}
+                style={({ pressed }) => [
                   styles.targetButton,
-                  target === targetValue && styles.targetButtonActive,
+                  target === t && styles.targetButtonActive,
+                  pressed && styles.targetButtonPressed,
                 ]}
-                onPress={() => setTarget(targetValue)}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setTarget(t);
+                }}
               >
-                <Text
-                  style={[
-                    styles.targetButtonText,
-                    target === targetValue && styles.targetButtonTextActive,
-                  ]}
-                >
-                  {targetValue}
-                </Text>
-              </TouchableOpacity>
+                {target === t ? (
+                  <LinearGradient
+                    colors={THEME.gradients.primary}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.targetButtonGradient}
+                  >
+                    <Text style={styles.targetButtonTextActive}>{t}</Text>
+                  </LinearGradient>
+                ) : (
+                  <Text style={styles.targetButtonText}>{t}</Text>
+                )}
+              </Pressable>
             ))}
           </View>
-        </View>
+        </Animated.View>
+
+        {/* Celebration message */}
+        {count >= target && (
+          <Animated.View
+            entering={FadeIn.springify()}
+            style={styles.celebrationContainer}
+          >
+            <LinearGradient
+              colors={THEME.gradients.gold}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.celebrationGradient}
+            >
+              <Ionicons name="trophy" size={24} color="#FFFFFF" />
+              <Text style={styles.celebrationText}>
+                ماشاء الله! أكملت الهدف 🎉
+              </Text>
+            </LinearGradient>
+          </Animated.View>
+        )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: THEME.colors.background,
   },
   header: {
+    paddingHorizontal: THEME.spacing.md,
+    paddingBottom: THEME.spacing.lg,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
-  backButton: {
-    width: 40,
-    height: 40,
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  buttonPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.95 }],
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.text,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
-  settingsButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+  headerPlaceholder: {
+    width: 44,
+    height: 44,
   },
   content: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: THEME.spacing.md,
+    paddingTop: THEME.spacing.xl,
   },
   counterContainer: {
-    marginBottom: 48,
+    alignItems: 'center',
+    marginBottom: THEME.spacing.xl,
   },
   tipsContainer: {
+    marginBottom: THEME.spacing.xl,
+  },
+  tipsGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primary + '10',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 32,
+    borderRadius: THEME.borderRadius.md,
+    padding: THEME.spacing.md,
   },
   tipsText: {
     flex: 1,
     fontSize: 14,
-    color: COLORS.text,
-    marginLeft: 12,
+    color: THEME.colors.text,
+    marginLeft: THEME.spacing.sm,
     lineHeight: 20,
   },
-  quickTargets: {
-    width: '100%',
+  targetSection: {
+    marginBottom: THEME.spacing.lg,
   },
-  quickTargetsTitle: {
+  targetTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 12,
+    color: THEME.colors.text,
+    marginBottom: THEME.spacing.md,
   },
   targetsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: THEME.spacing.sm,
   },
   targetButton: {
     flex: 1,
-    paddingVertical: 12,
-    marginHorizontal: 4,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    height: 48,
+    borderRadius: THEME.borderRadius.md,
+    backgroundColor: THEME.colors.surface,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 2,
-    borderColor: COLORS.border,
+    borderColor: THEME.colors.border,
+    ...THEME.shadows.small,
   },
   targetButtonActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    borderColor: 'transparent',
+    padding: 0,
+    overflow: 'hidden',
+  },
+  targetButtonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.97 }],
+  },
+  targetButtonGradient: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: THEME.borderRadius.md - 2,
   },
   targetButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.text,
+    color: THEME.colors.text,
   },
   targetButtonTextActive: {
+    fontSize: 16,
+    fontWeight: '700',
     color: '#FFFFFF',
+  },
+  celebrationContainer: {
+    marginTop: THEME.spacing.md,
+  },
+  celebrationGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: THEME.borderRadius.lg,
+    padding: THEME.spacing.md,
+    ...THEME.shadows.goldGlow,
+  },
+  celebrationText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginLeft: THEME.spacing.sm,
   },
 });

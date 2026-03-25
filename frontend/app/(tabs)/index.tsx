@@ -4,30 +4,54 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  Dimensions,
   RefreshControl,
+  StatusBar,
+  Pressable,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Card } from '../../src/components/Common';
-import { COLORS } from '../../src/constants/colors';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withDelay,
+  withTiming,
+  Easing,
+  withSequence,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { THEME } from '../../src/constants/theme';
 import { useApp } from '../../src/contexts/AppContext';
 import { apiService } from '../../src/services/api';
 import { IslamicEvent } from '../../src/types';
+import {
+  StatsCard,
+  TasbeehMethodCard,
+  QuickActionButton,
+  AnimatedCard,
+} from '../../src/components/ui';
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { todayStats, refreshStats } = useApp();
   const [refreshing, setRefreshing] = useState(false);
   const [nextEvent, setNextEvent] = useState<IslamicEvent | null>(null);
 
+  // Animation values
+  const headerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(-20);
+
   useEffect(() => {
     loadData();
+    // Animate header
+    headerOpacity.value = withTiming(1, { duration: 600 });
+    headerTranslateY.value = withSpring(0, { damping: 15, stiffness: 80 });
   }, []);
 
   const loadData = async () => {
@@ -44,117 +68,151 @@ export default function HomeScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await loadData();
     setRefreshing(false);
   };
 
+  const headerStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
+
   const tasbeehMethods = [
     {
-      title: 'العد باللمس',
+      title: 'باللمس',
       description: 'اضغط للتسبيح',
-      icon: 'hand-left',
-      color: COLORS.primary,
+      icon: 'hand-left' as const,
+      gradient: THEME.gradients.primary,
       route: '/tasbeeh/touch',
     },
     {
-      title: 'العد بالصوت',
-      description: 'قل وسيتم العد',
-      icon: 'mic',
-      color: COLORS.secondary,
+      title: 'بالصوت',
+      description: 'قل وسيُعدّ',
+      icon: 'mic' as const,
+      gradient: THEME.gradients.gold,
       route: '/tasbeeh/voice',
     },
     {
       title: 'المساعد الذكي',
-      description: 'اطلب من المساعد',
-      icon: 'sparkles',
-      color: COLORS.accent,
+      description: 'AI مساعد',
+      icon: 'sparkles' as const,
+      gradient: ['#667eea', '#764ba2'] as const,
       route: '/tasbeeh/ai',
     },
   ];
 
+  const quickActions = [
+    { title: 'الأذكار', icon: 'book' as const, route: '/(tabs)/categories', color: THEME.colors.primary },
+    { title: 'مواقيت الصلاة', icon: 'time' as const, route: '/prayer-times', color: THEME.colors.gold },
+    { title: 'التحديات', icon: 'trophy' as const, route: '/challenges', color: '#FF6B6B' },
+    { title: 'الاشتراك', icon: 'diamond' as const, route: '/subscription', color: '#667eea' },
+  ];
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Gradient Header */}
+      <LinearGradient
+        colors={THEME.gradients.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
+      >
+        <Animated.View style={[styles.headerContent, headerStyle]}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>السلام عليكم</Text>
+            <Text style={styles.subtitle}>بسم الله نبدأ يومنا</Text>
+          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.notificationButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={() => {
+              Haptics.selectionAsync();
+              router.push('/notifications' as any);
+            }}
+          >
+            <Ionicons name="notifications-outline" size={24} color="#FFFFFF" />
+          </Pressable>
+        </Animated.View>
+      </LinearGradient>
+
       <ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={THEME.colors.primary}
+            colors={[THEME.colors.primary]}
+          />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>السلام عليكم</Text>
-            <Text style={styles.subtitle}>بسم الله نبدأ</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.notificationButton}
-            onPress={() => router.push('/notifications')}
-          >
-            <Ionicons name="notifications-outline" size={24} color={COLORS.text} />
-          </TouchableOpacity>
-        </View>
-
         {/* Stats Card */}
-        <Card style={styles.statsCard}>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{todayStats?.total_tasbeeh || 0}</Text>
-              <Text style={styles.statLabel}>تسبيحة اليوم</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{todayStats?.xp_earned || 0}</Text>
-              <Text style={styles.statLabel}>نقاط XP</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{todayStats?.completed_azkar_count || 0}</Text>
-              <Text style={styles.statLabel}>أذكار مكتملة</Text>
-            </View>
-          </View>
-        </Card>
+        <View style={styles.statsContainer}>
+          <StatsCard
+            totalTasbeeh={todayStats?.total_tasbeeh || 0}
+            xpEarned={todayStats?.xp_earned || 0}
+            completedAzkar={todayStats?.completed_azkar_count || 0}
+          />
+        </View>
 
         {/* Tasbeeh Methods */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>طرق التسبيح</Text>
-          {tasbeehMethods.map((method, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.methodCard}
-              onPress={() => router.push(method.route as any)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.methodIcon, { backgroundColor: method.color + '20' }]}>
-                <Ionicons name={method.icon as any} size={28} color={method.color} />
-              </View>
-              <View style={styles.methodContent}>
-                <Text style={styles.methodTitle}>{method.title}</Text>
-                <Text style={styles.methodDescription}>{method.description}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={24} color={COLORS.textSecondary} />
-            </TouchableOpacity>
-          ))}
+          <View style={styles.tasbeehRow}>
+            {tasbeehMethods.map((method, index) => (
+              <TasbeehMethodCard
+                key={method.route}
+                title={method.title}
+                description={method.description}
+                icon={method.icon}
+                gradient={method.gradient}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push(method.route as any);
+                }}
+                delay={index * 100}
+              />
+            ))}
+          </View>
         </View>
 
         {/* Next Event */}
         {nextEvent && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>المناسبة القادمة</Text>
-            <TouchableOpacity
-              style={styles.eventCard}
-              onPress={() => router.push(`/events/${nextEvent.id}`)}
-              activeOpacity={0.7}
+            <AnimatedCard
+              delay={200}
+              onPress={() => router.push(`/events/${nextEvent.id}` as any)}
             >
-              <View style={styles.eventIcon}>
-                <Ionicons name="calendar" size={32} color={COLORS.primary} />
-              </View>
               <View style={styles.eventContent}>
-                <Text style={styles.eventTitle}>{nextEvent.name_ar}</Text>
-                <Text style={styles.eventDescription}>
-                  {nextEvent.description_ar || 'اضغط للمزيد من التفاصيل'}
-                </Text>
+                <LinearGradient
+                  colors={THEME.gradients.sunrise}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.eventIconContainer}
+                >
+                  <Ionicons name="calendar" size={28} color="#FFFFFF" />
+                </LinearGradient>
+                <View style={styles.eventTextContainer}>
+                  <Text style={styles.eventTitle}>{nextEvent.name_ar}</Text>
+                  <Text style={styles.eventDescription} numberOfLines={2}>
+                    {nextEvent.description_ar || 'اضغط للمزيد من التفاصيل'}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={22}
+                  color={THEME.colors.textMuted}
+                />
               </View>
-            </TouchableOpacity>
+            </AnimatedCard>
           </View>
         )}
 
@@ -162,219 +220,168 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>وصول سريع</Text>
           <View style={styles.quickActionsRow}>
-            <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => router.push('/(tabs)/categories')}
-            >
-              <View style={styles.quickActionIcon}>
-                <Ionicons name="book" size={24} color={COLORS.primary} />
-              </View>
-              <Text style={styles.quickActionText}>الأذكار</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => router.push('/prayer-times' as any)}
-            >
-              <View style={styles.quickActionIcon}>
-                <Ionicons name="time" size={24} color={COLORS.primary} />
-              </View>
-              <Text style={styles.quickActionText}>مواقيت الصلاة</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => router.push('/challenges' as any)}
-            >
-              <View style={styles.quickActionIcon}>
-                <Ionicons name="trophy" size={24} color={COLORS.primary} />
-              </View>
-              <Text style={styles.quickActionText}>التحديات</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => router.push('/subscription' as any)}
-            >
-              <View style={styles.quickActionIcon}>
-                <Ionicons name="card" size={24} color={COLORS.primary} />
-              </View>
-              <Text style={styles.quickActionText}>الاشتراك</Text>
-            </TouchableOpacity>
+            {quickActions.map((action, index) => (
+              <QuickActionButton
+                key={action.route}
+                title={action.title}
+                icon={action.icon}
+                color={action.color}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push(action.route as any);
+                }}
+                delay={index * 80}
+              />
+            ))}
           </View>
+        </View>
+
+        {/* Daily Motivation */}
+        <View style={styles.section}>
+          <AnimatedCard
+            delay={400}
+            gradient={['#F9F7F0', '#FFFFFF'] as const}
+          >
+            <View style={styles.motivationContent}>
+              <View style={styles.motivationIcon}>
+                <Ionicons name="leaf" size={24} color={THEME.colors.primary} />
+              </View>
+              <Text style={styles.motivationText}>
+                "إِنَّ اللَّهَ يُحِبُّ إِذَا عَمِلَ أَحَدُكُمْ عَمَلًا أَنْ يُتْقِنَهُ"
+              </Text>
+              <Text style={styles.motivationSource}>حديث شريف</Text>
+            </View>
+          </AnimatedCard>
         </View>
 
         {/* Bottom Padding */}
         <View style={{ height: 32 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: THEME.colors.background,
   },
   header: {
+    paddingHorizontal: THEME.spacing.md,
+    paddingBottom: THEME.spacing.xl,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flex: 1,
   },
   greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.text,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: COLORS.textSecondary,
+    color: 'rgba(255,255,255,0.85)',
   },
   notificationButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  statsCard: {
-    marginHorizontal: 20,
-    marginBottom: 24,
+  buttonPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.95 }],
   },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
+  scrollView: {
     flex: 1,
+    marginTop: -20,
   },
-  statValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-    marginBottom: 4,
+  scrollContent: {
+    paddingTop: 8,
   },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: COLORS.border,
+  statsContainer: {
+    marginTop: 12,
   },
   section: {
-    marginBottom: 24,
-    paddingHorizontal: 20,
+    marginBottom: THEME.spacing.lg,
+    paddingHorizontal: THEME.spacing.md,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 16,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginBottom: THEME.spacing.md,
   },
-  methodCard: {
+  tasbeehRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  methodIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  methodContent: {
-    flex: 1,
-  },
-  methodTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  methodDescription: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-  },
-  eventCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary + '10',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: COLORS.primary + '30',
-  },
-  eventIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
+    justifyContent: 'space-between',
+    gap: THEME.spacing.sm,
   },
   eventContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  eventIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: THEME.spacing.md,
+  },
+  eventTextContainer: {
     flex: 1,
   },
   eventTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.primary,
+    fontSize: 17,
+    fontWeight: '600',
+    color: THEME.colors.text,
     marginBottom: 4,
   },
   eventDescription: {
     fontSize: 14,
-    color: COLORS.text,
+    color: THEME.colors.textSecondary,
+    lineHeight: 20,
   },
   quickActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  quickAction: {
+  motivationContent: {
     alignItems: 'center',
-    flex: 1,
-    marginHorizontal: 4,
+    paddingVertical: THEME.spacing.sm,
   },
-  quickActionIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#FFFFFF',
+  motivationIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: THEME.colors.primary + '15',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    marginBottom: THEME.spacing.md,
   },
-  quickActionText: {
-    fontSize: 12,
-    color: COLORS.text,
+  motivationText: {
+    fontSize: 18,
+    color: THEME.colors.text,
     textAlign: 'center',
+    lineHeight: 30,
+    fontWeight: '500',
+    paddingHorizontal: THEME.spacing.md,
+  },
+  motivationSource: {
+    fontSize: 14,
+    color: THEME.colors.gold,
+    marginTop: THEME.spacing.sm,
+    fontWeight: '600',
   },
 });

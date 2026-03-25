@@ -1,18 +1,40 @@
-import React, { useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useRef, useCallback, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  Alert,
+  StatusBar,
+  Switch,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Card } from '../../src/components/Common';
-import { COLORS } from '../../src/constants/colors';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  FadeInDown,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { THEME } from '../../src/constants/theme';
+import { AnimatedCard } from '../../src/components/ui';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const pressCountRef = useRef(0);
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [darkMode, setDarkMode] = useState(false);
+  const [notifications, setNotifications] = useState(true);
 
   const handleLogoPress = useCallback(() => {
     pressCountRef.current += 1;
+    Haptics.selectionAsync();
 
     if (pressTimerRef.current) {
       clearTimeout(pressTimerRef.current);
@@ -25,6 +47,7 @@ export default function SettingsScreen() {
     if (pressCountRef.current >= 5) {
       pressCountRef.current = 0;
       if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         'مرحباً أيها المالك',
         'جاري فتح لوحة التحكم...',
@@ -37,156 +60,282 @@ export default function SettingsScreen() {
   const settingsSections = [
     {
       title: 'عام',
+      icon: 'settings',
       items: [
-        { title: 'اللغة', icon: 'language', onPress: () => {} },
-        { title: 'الثيم', icon: 'color-palette', onPress: () => {} },
-        { title: 'حجم الخط', icon: 'text', onPress: () => {} },
+        { title: 'اللغة', icon: 'language', value: 'العربية', onPress: () => {} },
+        { title: 'حجم الخط', icon: 'text', value: 'متوسط', onPress: () => {} },
+        {
+          title: 'الوضع الليلي',
+          icon: 'moon',
+          toggle: true,
+          value: darkMode,
+          onToggle: () => setDarkMode((prev) => !prev),
+        },
       ],
     },
     {
       title: 'الإشعارات',
+      icon: 'notifications',
       items: [
-        { title: 'إشعارات الصلاة', icon: 'notifications', onPress: () => {} },
-        { title: 'إشعارات الأذكار', icon: 'alarm', onPress: () => {} },
-        { title: 'إشعارات المناسبات', icon: 'calendar', onPress: () => {} },
+        {
+          title: 'إشعارات الصلاة',
+          icon: 'time',
+          toggle: true,
+          value: notifications,
+          onToggle: () => setNotifications((prev) => !prev),
+        },
+        { title: 'إشعارات الأذكار', icon: 'alarm', value: 'مفعّل', onPress: () => {} },
+        { title: 'إشعارات المناسبات', icon: 'calendar', value: 'مفعّل', onPress: () => {} },
       ],
     },
     {
       title: 'الاشتراك',
+      icon: 'diamond',
       items: [
-        { title: 'حالة الاشتراك', icon: 'card', onPress: () => {} },
-        { title: 'تجديد الاشتراك', icon: 'refresh', onPress: () => {} },
+        { title: 'حالة الاشتراك', icon: 'card', value: 'مفعّل', onPress: () => router.push('/subscription' as any) },
+        { title: 'تجديد الاشتراك', icon: 'refresh', onPress: () => router.push('/subscription' as any) },
       ],
     },
     {
       title: 'عن التطبيق',
+      icon: 'information-circle',
       items: [
         { title: 'معلومات التطبيق', icon: 'information-circle', onPress: () => {} },
         { title: 'شارك التطبيق', icon: 'share-social', onPress: () => {} },
-        { title: 'قيم التطبيق', icon: 'star', onPress: () => {} },
+        { title: 'قيّم التطبيق', icon: 'star', onPress: () => {} },
       ],
     },
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
+      {/* Header */}
+      <LinearGradient
+        colors={THEME.gradients.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
+      >
         <Text style={styles.headerTitle}>الإعدادات</Text>
-      </View>
+      </LinearGradient>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         {settingsSections.map((section, sectionIndex) => (
-          <View key={sectionIndex} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <Card style={styles.sectionCard}>
+          <Animated.View
+            key={sectionIndex}
+            entering={FadeInDown.delay(sectionIndex * 100).springify()}
+            style={styles.section}
+          >
+            <View style={styles.sectionHeader}>
+              <Ionicons
+                name={section.icon as any}
+                size={18}
+                color={THEME.colors.primary}
+              />
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+            </View>
+
+            <View style={styles.sectionCard}>
               {section.items.map((item, itemIndex) => (
-                <TouchableOpacity
+                <Pressable
                   key={itemIndex}
-                  style={[
+                  style={({ pressed }) => [
                     styles.settingItem,
                     itemIndex !== section.items.length - 1 && styles.settingItemBorder,
+                    pressed && !item.toggle && styles.settingItemPressed,
                   ]}
-                  onPress={item.onPress}
-                  activeOpacity={0.7}
+                  onPress={() => {
+                    if (!item.toggle && item.onPress) {
+                      Haptics.selectionAsync();
+                      item.onPress();
+                    }
+                  }}
                 >
                   <View style={styles.settingLeft}>
-                    <Ionicons name={item.icon as any} size={24} color={COLORS.primary} />
+                    <View style={styles.settingIconContainer}>
+                      <Ionicons
+                        name={item.icon as any}
+                        size={20}
+                        color={THEME.colors.primary}
+                      />
+                    </View>
                     <Text style={styles.settingTitle}>{item.title}</Text>
                   </View>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={20}
-                    color={COLORS.textSecondary}
-                  />
-                </TouchableOpacity>
+
+                  {item.toggle ? (
+                    <Switch
+                      value={item.value as boolean}
+                      onValueChange={() => {
+                        Haptics.selectionAsync();
+                        item.onToggle?.();
+                      }}
+                      trackColor={{
+                        false: THEME.colors.border,
+                        true: THEME.colors.primary + '60',
+                      }}
+                      thumbColor={item.value ? THEME.colors.primary : '#f4f3f4'}
+                    />
+                  ) : (
+                    <View style={styles.settingRight}>
+                      {item.value && (
+                        <Text style={styles.settingValue}>{item.value}</Text>
+                      )}
+                      <Ionicons
+                        name="chevron-forward"
+                        size={20}
+                        color={THEME.colors.textMuted}
+                      />
+                    </View>
+                  )}
+                </Pressable>
               ))}
-            </Card>
-          </View>
+            </View>
+          </Animated.View>
         ))}
 
-        {/* Version Info - Tap logo 5 times to access Admin */}
-        <TouchableOpacity
-          style={styles.version}
-          onPress={handleLogoPress}
-          activeOpacity={0.8}
+        {/* App Logo & Version - Tap 5 times to access Admin */}
+        <Animated.View
+          entering={FadeInDown.delay(500).springify()}
         >
-          <Ionicons name="leaf" size={40} color={COLORS.primary} />
-          <Text style={styles.versionText}>نسخة 1.0.0</Text>
-          <Text style={styles.versionSubtext}>أذكار المسلم - بدون إعلانات</Text>
-        </TouchableOpacity>
+          <Pressable
+            style={({ pressed }) => [
+              styles.versionContainer,
+              pressed && styles.versionPressed,
+            ]}
+            onPress={handleLogoPress}
+          >
+            <LinearGradient
+              colors={THEME.gradients.primary}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.logoContainer}
+            >
+              <Ionicons name="leaf" size={32} color="#FFFFFF" />
+            </LinearGradient>
+            <Text style={styles.versionText}>نسخة 1.0.0</Text>
+            <Text style={styles.versionSubtext}>أذكار المسلم - بدون إعلانات</Text>
+          </Pressable>
+        </Animated.View>
+
+        <View style={{ height: 32 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: THEME.colors.background,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    paddingHorizontal: THEME.spacing.md,
+    paddingBottom: THEME.spacing.lg,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.text,
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   scrollContent: {
-    padding: 20,
+    padding: THEME.spacing.md,
+    paddingTop: THEME.spacing.lg,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: THEME.spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: THEME.spacing.sm,
+    paddingHorizontal: THEME.spacing.xs,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginBottom: 12,
-    paddingHorizontal: 4,
+    color: THEME.colors.textSecondary,
+    marginLeft: THEME.spacing.xs,
   },
   sectionCard: {
-    padding: 0,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.borderRadius.lg,
+    overflow: 'hidden',
+    ...THEME.shadows.small,
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    padding: THEME.spacing.md,
+    minHeight: 56,
   },
   settingItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: THEME.colors.border,
+  },
+  settingItemPressed: {
+    backgroundColor: THEME.colors.background,
   },
   settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  settingIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: THEME.colors.primary + '12',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: THEME.spacing.sm,
   },
   settingTitle: {
     fontSize: 16,
-    color: COLORS.text,
-    marginLeft: 12,
+    color: THEME.colors.text,
+    fontWeight: '500',
   },
-  version: {
+  settingRight: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 32,
+  },
+  settingValue: {
+    fontSize: 14,
+    color: THEME.colors.textMuted,
+    marginRight: THEME.spacing.xs,
+  },
+  versionContainer: {
+    alignItems: 'center',
+    paddingVertical: THEME.spacing.xl,
+  },
+  versionPressed: {
+    opacity: 0.7,
+  },
+  logoContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: THEME.spacing.md,
+    ...THEME.shadows.glow,
   },
   versionText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
+    fontSize: 16,
+    fontWeight: '600',
+    color: THEME.colors.text,
     marginBottom: 4,
   },
   versionSubtext: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    opacity: 0.7,
+    fontSize: 14,
+    color: THEME.colors.textSecondary,
   },
 });
