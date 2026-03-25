@@ -132,6 +132,49 @@ class PrayerTimesRequest(BaseModel):
     city_name: Optional[str] = None
 
 # ============================================================
+# NEW MODELS FOR i18n AND AUDIO
+# ============================================================
+
+class Language(BaseModel):
+    code: str
+    name_ar: str
+    name_en: str
+    name_native: str
+    flag: str
+    is_rtl: bool = False
+    is_active: bool = True
+    speech_code: str
+    display_order: int = 0
+
+class Translation(BaseModel):
+    id: Optional[int] = None
+    azkar_id: int
+    language_code: str
+    translation_text: str
+    transliteration: Optional[str] = None
+    virtue_translated: Optional[str] = None
+    reference_translated: Optional[str] = None
+
+class AudioFile(BaseModel):
+    id: Optional[int] = None
+    azkar_id: int
+    language_code: str
+    audio_url: Optional[str] = None
+    local_path: Optional[str] = None
+    file_size: Optional[int] = None
+    is_downloaded: bool = False
+    voice_type: str = "expo-speech"  # expo-speech, recorded, ai-generated
+
+class AppSettings(BaseModel):
+    user_id: str = "default"
+    font_size: str = "medium"  # small, medium, large, extraLarge
+    auto_play: bool = False
+    playback_speed: str = "normal"  # slow, normal, fast
+    show_translation: bool = True
+    show_transliteration: bool = True
+    dark_mode: bool = False
+
+# ============================================================
 # DATABASE INITIALIZATION
 # ============================================================
 
@@ -142,6 +185,10 @@ async def init_database():
     existing_categories = await db.categories.count_documents({})
     if existing_categories > 0:
         logger.info("Database already initialized")
+        # Initialize languages if not exist
+        await init_languages()
+        # Update azkar with transliterations if not present
+        await update_azkar_transliterations()
         return
     
     logger.info("Initializing database with azkar data...")
@@ -165,56 +212,165 @@ async def init_database():
     ]
     await db.categories.insert_many(categories)
     
-    # Initialize some azkar for each category (limited sample for now)
+    # Initialize azkar with transliterations
     azkar_data = [
         # Category 1: أذكار الصباح
         {
             "id": 1, "category_id": 1,
             "arabic_text": "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ",
+            "transliteration": "Allahu la ilaha illa huwal Hayyul Qayyum, la ta'khuzuhu sinatun wa la nawm, lahu ma fis samawati wa ma fil ard",
+            "translation_en": "Allah - there is no deity except Him, the Ever-Living, the Sustainer of existence. Neither drowsiness overtakes Him nor sleep. To Him belongs whatever is in the heavens and whatever is on the earth.",
             "repeat_count": 1,
             "virtue_ar": "من قالها حين يصبح أجير من الجن حتى يمسى",
+            "virtue_en": "Whoever recites it in the morning will be protected from jinn until evening",
             "reference_ar": "رواه الحاكم وابن حبان",
+            "reference_en": "Narrated by Al-Hakim and Ibn Hibban",
             "is_favorite": False
         },
         {
             "id": 2, "category_id": 1,
             "arabic_text": "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ * قُلْ هُوَ اللَّهُ أَحَدٌ * اللَّهُ الصَّمَدُ * لَمْ يَلِدْ وَلَمْ يُولَدْ * وَلَمْ يَكُنْ لَهُ كُفُوًا أَحَدٌ",
+            "transliteration": "Bismillahir Rahmanir Rahim. Qul huwa Allahu ahad. Allahus samad. Lam yalid wa lam yulad. Wa lam yakun lahu kufuwan ahad",
+            "translation_en": "In the name of Allah, the Most Gracious, the Most Merciful. Say: He is Allah, the One. Allah, the Eternal Refuge. He neither begets nor is born. Nor is there to Him any equivalent.",
             "repeat_count": 3,
             "virtue_ar": "من قالها حين يصبح وحين يمسى كفته من كل شيء",
+            "virtue_en": "Whoever recites it morning and evening, it will suffice him against everything",
             "reference_ar": "رواه الترمذي",
+            "reference_en": "Narrated by At-Tirmidhi",
             "is_favorite": False
         },
         {
             "id": 3, "category_id": 1,
             "arabic_text": "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ",
+            "transliteration": "Asbahna wa asbahal mulku lillah, wal hamdu lillah, la ilaha illallahu wahdahu la shareeka lah",
+            "translation_en": "We have entered the morning and the whole kingdom belongs to Allah. Praise is due to Allah. There is no god but Allah alone, without partner.",
             "repeat_count": 1,
             "virtue_ar": "من قالها حين يصبح فقد أدى شكر يومه",
+            "virtue_en": "Whoever says it in the morning has fulfilled his thanks for that day",
             "reference_ar": "رواه مسلم",
+            "reference_en": "Narrated by Muslim",
+            "is_favorite": False
+        },
+        {
+            "id": 4, "category_id": 1,
+            "arabic_text": "اللَّهُمَّ بِكَ أَصْبَحْنَا، وَبِكَ أَمْسَيْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ النُّشُورُ",
+            "transliteration": "Allahumma bika asbahna, wa bika amsayna, wa bika nahya, wa bika namoot, wa ilaykan nushoor",
+            "translation_en": "O Allah, by Your leave we have reached the morning and by Your leave we have reached the evening, by Your leave we live and die and unto You is our resurrection.",
+            "repeat_count": 1,
+            "virtue_ar": "من الأذكار المشروعة في الصباح",
+            "virtue_en": "From the prescribed morning supplications",
+            "reference_ar": "رواه الترمذي",
+            "reference_en": "Narrated by At-Tirmidhi",
+            "is_favorite": False
+        },
+        {
+            "id": 5, "category_id": 1,
+            "arabic_text": "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+            "transliteration": "Subhan Allahi wa bihamdih",
+            "translation_en": "Glory be to Allah and His is the praise",
+            "repeat_count": 100,
+            "virtue_ar": "من قالها مائة مرة حين يصبح وحين يمسي لم يأت أحد يوم القيامة بأفضل مما جاء به",
+            "virtue_en": "Whoever says it 100 times in the morning and evening, no one will come on the Day of Resurrection with anything better",
+            "reference_ar": "رواه مسلم",
+            "reference_en": "Narrated by Muslim",
             "is_favorite": False
         },
         # Category 12: التسبيحات العامة
         {
             "id": 50, "category_id": 12,
             "arabic_text": "سُبْحَانَ اللَّهِ",
+            "transliteration": "Subhan Allah",
+            "translation_en": "Glory be to Allah",
             "repeat_count": 33,
             "virtue_ar": "من قالها دبر كل صلاة غفرت خطاياه",
+            "virtue_en": "Whoever says it after every prayer will have his sins forgiven",
             "reference_ar": "رواه مسلم",
+            "reference_en": "Narrated by Muslim",
             "is_favorite": False
         },
         {
             "id": 51, "category_id": 12,
             "arabic_text": "الْحَمْدُ لِلَّهِ",
+            "transliteration": "Alhamdulillah",
+            "translation_en": "Praise be to Allah",
             "repeat_count": 33,
             "virtue_ar": "من قالها دبر كل صلاة غفرت خطاياه",
+            "virtue_en": "Whoever says it after every prayer will have his sins forgiven",
             "reference_ar": "رواه مسلم",
+            "reference_en": "Narrated by Muslim",
             "is_favorite": False
         },
         {
             "id": 52, "category_id": 12,
             "arabic_text": "اللَّهُ أَكْبَرُ",
+            "transliteration": "Allahu Akbar",
+            "translation_en": "Allah is the Greatest",
             "repeat_count": 34,
             "virtue_ar": "من قالها دبر كل صلاة غفرت خطاياه",
+            "virtue_en": "Whoever says it after every prayer will have his sins forgiven",
             "reference_ar": "رواه مسلم",
+            "reference_en": "Narrated by Muslim",
+            "is_favorite": False
+        },
+        {
+            "id": 53, "category_id": 12,
+            "arabic_text": "لَا إِلَٰهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ",
+            "transliteration": "La ilaha illallahu wahdahu la shareeka lah, lahul mulku wa lahul hamdu wa huwa ala kulli shay'in qadeer",
+            "translation_en": "There is no god but Allah alone, without partner. To Him belongs dominion and to Him belongs praise and He is over all things competent.",
+            "repeat_count": 10,
+            "virtue_ar": "من قالها في يوم عشر مرات كان كمن أعتق أربعة أنفس من ولد إسماعيل",
+            "virtue_en": "Whoever says it ten times in a day will be like one who freed four souls from the descendants of Ismail",
+            "reference_ar": "رواه البخاري ومسلم",
+            "reference_en": "Narrated by Al-Bukhari and Muslim",
+            "is_favorite": False
+        },
+        {
+            "id": 54, "category_id": 12,
+            "arabic_text": "أَسْتَغْفِرُ اللَّهَ",
+            "transliteration": "Astaghfirullah",
+            "translation_en": "I seek forgiveness from Allah",
+            "repeat_count": 100,
+            "virtue_ar": "من لزم الاستغفار جعل الله له من كل ضيق مخرجاً",
+            "virtue_en": "Whoever maintains seeking forgiveness, Allah will make for him a way out of every difficulty",
+            "reference_ar": "رواه أبو داود",
+            "reference_en": "Narrated by Abu Dawud",
+            "is_favorite": False
+        },
+        {
+            "id": 55, "category_id": 12,
+            "arabic_text": "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ",
+            "transliteration": "La hawla wa la quwwata illa billah",
+            "translation_en": "There is no might nor power except with Allah",
+            "repeat_count": 10,
+            "virtue_ar": "كنز من كنوز الجنة",
+            "virtue_en": "A treasure from the treasures of Paradise",
+            "reference_ar": "رواه البخاري ومسلم",
+            "reference_en": "Narrated by Al-Bukhari and Muslim",
+            "is_favorite": False
+        },
+        {
+            "id": 56, "category_id": 12,
+            "arabic_text": "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، سُبْحَانَ اللَّهِ الْعَظِيمِ",
+            "transliteration": "Subhan Allahi wa bihamdih, Subhan Allahil Adheem",
+            "translation_en": "Glory be to Allah and His is the praise, Glory be to Allah the Magnificent",
+            "repeat_count": 10,
+            "virtue_ar": "كلمتان خفيفتان على اللسان، ثقيلتان في الميزان، حبيبتان إلى الرحمن",
+            "virtue_en": "Two phrases light on the tongue, heavy in the scales, beloved to the Most Merciful",
+            "reference_ar": "رواه البخاري ومسلم",
+            "reference_en": "Narrated by Al-Bukhari and Muslim",
+            "is_favorite": False
+        },
+        # Category 14: سيد الاستغفار
+        {
+            "id": 60, "category_id": 14,
+            "arabic_text": "اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ، أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ، وَأَبُوءُ بِذَنْبِي فَاغْفِرْ لِي فَإِنَّهُ لَا يَغْفِرُ الذُّنُوبَ إِلَّا أَنْتَ",
+            "transliteration": "Allahumma anta Rabbi la ilaha illa anta, khalaqtani wa ana abduk, wa ana ala ahdika wa wa'dika mastata't, a'udhu bika min sharri ma sana't, abu'u laka bini'matika alayya, wa abu'u bidhunbi faghfir li fa innahu la yaghfirudh dhunuba illa anta",
+            "translation_en": "O Allah, You are my Lord, there is no god but You. You created me and I am Your servant. I am faithful to my covenant and promise to You as much as I am able. I seek refuge in You from the evil of what I have done. I acknowledge before You all Your blessings upon me, and I confess to You my sins. So forgive me, for none forgives sins but You.",
+            "repeat_count": 1,
+            "virtue_ar": "من قالها من النهار موقنًا بها فمات من يومه قبل أن يمسي فهو من أهل الجنة",
+            "virtue_en": "Whoever says it with conviction during the day and dies before evening will be among the people of Paradise",
+            "reference_ar": "رواه البخاري",
+            "reference_en": "Narrated by Al-Bukhari",
             "is_favorite": False
         },
     ]
@@ -225,20 +381,44 @@ async def init_database():
         {
             "id": 1, "name_ar": "شهر رمضان المبارك", "name_en": "Holy Month of Ramadan",
             "hijri_month": 9, "hijri_day": 1,
-            "description_ar": "شهر الصيام والقيام والقرآن",
+            "description_ar": "شهر الصيام والقيام والقرآن، تُفتح فيه أبواب الجنة وتُغلق أبواب النار",
+            "description_en": "The month of fasting, prayer, and Quran. The gates of Paradise are opened and the gates of Hell are closed.",
             "notification_days": 3, "is_active": True
         },
         {
             "id": 2, "name_ar": "عيد الفطر المبارك", "name_en": "Eid al-Fitr",
             "hijri_month": 10, "hijri_day": 1,
-            "description_ar": "عيد الفطر السعيد",
+            "description_ar": "عيد الفطر السعيد، يوم الجائزة للصائمين",
+            "description_en": "Blessed Eid al-Fitr, the day of reward for those who fasted",
             "notification_days": 3, "is_active": True
         },
         {
             "id": 3, "name_ar": "يوم عرفة", "name_en": "Day of Arafah",
             "hijri_month": 12, "hijri_day": 9,
-            "description_ar": "يوم عرفة المبارك",
+            "description_ar": "يوم عرفة المبارك، صيامه يكفر سنتين",
+            "description_en": "The blessed Day of Arafah, fasting it expiates sins of two years",
             "notification_days": 3, "is_active": True
+        },
+        {
+            "id": 4, "name_ar": "عيد الأضحى المبارك", "name_en": "Eid al-Adha",
+            "hijri_month": 12, "hijri_day": 10,
+            "description_ar": "عيد الأضحى المبارك، عيد النحر",
+            "description_en": "Blessed Eid al-Adha, the Festival of Sacrifice",
+            "notification_days": 3, "is_active": True
+        },
+        {
+            "id": 5, "name_ar": "يوم عاشوراء", "name_en": "Day of Ashura",
+            "hijri_month": 1, "hijri_day": 10,
+            "description_ar": "يوم عاشوراء، صيامه يكفر سنة",
+            "description_en": "Day of Ashura, fasting it expiates sins of one year",
+            "notification_days": 3, "is_active": True
+        },
+        {
+            "id": 6, "name_ar": "ليلة القدر", "name_en": "Night of Power",
+            "hijri_month": 9, "hijri_day": 27,
+            "description_ar": "ليلة خير من ألف شهر",
+            "description_en": "A night better than a thousand months",
+            "notification_days": 1, "is_active": True
         },
     ]
     await db.islamic_events.insert_many(events)
@@ -258,7 +438,72 @@ async def init_database():
     ]
     await db.challenges.insert_many(challenges)
     
+    # Initialize languages
+    await init_languages()
+    
     logger.info("Database initialization complete!")
+
+
+async def init_languages():
+    """Initialize supported languages"""
+    existing_languages = await db.languages.count_documents({})
+    if existing_languages > 0:
+        return
+    
+    logger.info("Initializing languages...")
+    
+    languages = [
+        {"code": "ar", "name_ar": "العربية", "name_en": "Arabic", "name_native": "العربية", "flag": "🇸🇦", "is_rtl": True, "speech_code": "ar-SA", "display_order": 1, "is_active": True},
+        {"code": "en", "name_ar": "الإنجليزية", "name_en": "English", "name_native": "English", "flag": "🇺🇸", "is_rtl": False, "speech_code": "en-US", "display_order": 2, "is_active": True},
+        {"code": "tr", "name_ar": "التركية", "name_en": "Turkish", "name_native": "Türkçe", "flag": "🇹🇷", "is_rtl": False, "speech_code": "tr-TR", "display_order": 3, "is_active": True},
+        {"code": "fr", "name_ar": "الفرنسية", "name_en": "French", "name_native": "Français", "flag": "🇫🇷", "is_rtl": False, "speech_code": "fr-FR", "display_order": 4, "is_active": True},
+        {"code": "de", "name_ar": "الألمانية", "name_en": "German", "name_native": "Deutsch", "flag": "🇩🇪", "is_rtl": False, "speech_code": "de-DE", "display_order": 5, "is_active": True},
+        {"code": "es", "name_ar": "الإسبانية", "name_en": "Spanish", "name_native": "Español", "flag": "🇪🇸", "is_rtl": False, "speech_code": "es-ES", "display_order": 6, "is_active": True},
+        {"code": "it", "name_ar": "الإيطالية", "name_en": "Italian", "name_native": "Italiano", "flag": "🇮🇹", "is_rtl": False, "speech_code": "it-IT", "display_order": 7, "is_active": True},
+        {"code": "pt", "name_ar": "البرتغالية", "name_en": "Portuguese", "name_native": "Português", "flag": "🇧🇷", "is_rtl": False, "speech_code": "pt-BR", "display_order": 8, "is_active": True},
+        {"code": "ru", "name_ar": "الروسية", "name_en": "Russian", "name_native": "Русский", "flag": "🇷🇺", "is_rtl": False, "speech_code": "ru-RU", "display_order": 9, "is_active": True},
+        {"code": "zh", "name_ar": "الصينية", "name_en": "Chinese", "name_native": "中文", "flag": "🇨🇳", "is_rtl": False, "speech_code": "zh-CN", "display_order": 10, "is_active": True},
+        {"code": "ja", "name_ar": "اليابانية", "name_en": "Japanese", "name_native": "日本語", "flag": "🇯🇵", "is_rtl": False, "speech_code": "ja-JP", "display_order": 11, "is_active": True},
+        {"code": "ko", "name_ar": "الكورية", "name_en": "Korean", "name_native": "한국어", "flag": "🇰🇷", "is_rtl": False, "speech_code": "ko-KR", "display_order": 12, "is_active": True},
+        {"code": "hi", "name_ar": "الهندية", "name_en": "Hindi", "name_native": "हिन्दी", "flag": "🇮🇳", "is_rtl": False, "speech_code": "hi-IN", "display_order": 13, "is_active": True},
+        {"code": "bn", "name_ar": "البنغالية", "name_en": "Bengali", "name_native": "বাংলা", "flag": "🇧🇩", "is_rtl": False, "speech_code": "bn-BD", "display_order": 14, "is_active": True},
+        {"code": "ur", "name_ar": "الأردية", "name_en": "Urdu", "name_native": "اردو", "flag": "🇵🇰", "is_rtl": True, "speech_code": "ur-PK", "display_order": 15, "is_active": True},
+        {"code": "fa", "name_ar": "الفارسية", "name_en": "Persian", "name_native": "فارسی", "flag": "🇮🇷", "is_rtl": True, "speech_code": "fa-IR", "display_order": 16, "is_active": True},
+        {"code": "id", "name_ar": "الإندونيسية", "name_en": "Indonesian", "name_native": "Indonesia", "flag": "🇮🇩", "is_rtl": False, "speech_code": "id-ID", "display_order": 17, "is_active": True},
+        {"code": "ms", "name_ar": "الماليزية", "name_en": "Malay", "name_native": "Melayu", "flag": "🇲🇾", "is_rtl": False, "speech_code": "ms-MY", "display_order": 18, "is_active": True},
+        {"code": "sw", "name_ar": "السواحيلية", "name_en": "Swahili", "name_native": "Kiswahili", "flag": "🇰🇪", "is_rtl": False, "speech_code": "sw-KE", "display_order": 19, "is_active": True},
+        {"code": "ha", "name_ar": "الهوسا", "name_en": "Hausa", "name_native": "Hausa", "flag": "🇳🇬", "is_rtl": False, "speech_code": "ha-NG", "display_order": 20, "is_active": True},
+        {"code": "yo", "name_ar": "اليوروبا", "name_en": "Yoruba", "name_native": "Yorùbá", "flag": "🇳🇬", "is_rtl": False, "speech_code": "yo-NG", "display_order": 21, "is_active": True},
+        {"code": "am", "name_ar": "الأمهرية", "name_en": "Amharic", "name_native": "አማርኛ", "flag": "🇪🇹", "is_rtl": False, "speech_code": "am-ET", "display_order": 22, "is_active": True},
+        {"code": "si", "name_ar": "السنهالية", "name_en": "Sinhala", "name_native": "සිංහල", "flag": "🇱🇰", "is_rtl": False, "speech_code": "si-LK", "display_order": 23, "is_active": True},
+        {"code": "th", "name_ar": "التايلاندية", "name_en": "Thai", "name_native": "ไทย", "flag": "🇹🇭", "is_rtl": False, "speech_code": "th-TH", "display_order": 24, "is_active": True},
+        {"code": "vi", "name_ar": "الفيتنامية", "name_en": "Vietnamese", "name_native": "Tiếng Việt", "flag": "🇻🇳", "is_rtl": False, "speech_code": "vi-VN", "display_order": 25, "is_active": True},
+        {"code": "pl", "name_ar": "البولندية", "name_en": "Polish", "name_native": "Polski", "flag": "🇵🇱", "is_rtl": False, "speech_code": "pl-PL", "display_order": 26, "is_active": True},
+        {"code": "nl", "name_ar": "الهولندية", "name_en": "Dutch", "name_native": "Nederlands", "flag": "🇳🇱", "is_rtl": False, "speech_code": "nl-NL", "display_order": 27, "is_active": True},
+        {"code": "sv", "name_ar": "السويدية", "name_en": "Swedish", "name_native": "Svenska", "flag": "🇸🇪", "is_rtl": False, "speech_code": "sv-SE", "display_order": 28, "is_active": True},
+        {"code": "el", "name_ar": "اليونانية", "name_en": "Greek", "name_native": "Ελληνικά", "flag": "🇬🇷", "is_rtl": False, "speech_code": "el-GR", "display_order": 29, "is_active": True},
+        {"code": "he", "name_ar": "العبرية", "name_en": "Hebrew", "name_native": "עברית", "flag": "🇮🇱", "is_rtl": True, "speech_code": "he-IL", "display_order": 30, "is_active": True},
+    ]
+    
+    await db.languages.insert_many(languages)
+    logger.info(f"Initialized {len(languages)} languages")
+
+
+async def update_azkar_transliterations():
+    """Update existing azkar with transliterations if not present"""
+    transliteration_map = {
+        "سُبْحَانَ اللَّهِ": "Subhan Allah",
+        "الْحَمْدُ لِلَّهِ": "Alhamdulillah",
+        "اللَّهُ أَكْبَرُ": "Allahu Akbar",
+        "أَسْتَغْفِرُ اللَّهَ": "Astaghfirullah",
+        "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ": "La hawla wa la quwwata illa billah",
+    }
+    
+    for arabic, transliteration in transliteration_map.items():
+        await db.azkar.update_many(
+            {"arabic_text": arabic, "transliteration": None},
+            {"$set": {"transliteration": transliteration}}
+        )
 
 # ============================================================
 # API ROUTES
@@ -776,6 +1021,274 @@ async def ai_chat(message: AIMessage):
     await db.ai_chat.insert_one(chat_record)
     
     return {"response": response_text, "timestamp": datetime.utcnow().isoformat()}
+
+# ============================================================
+# LANGUAGE AND TRANSLATION ENDPOINTS
+# ============================================================
+
+@api_router.get("/languages")
+async def get_languages():
+    """Get all supported languages"""
+    languages = await db.languages.find({"is_active": True}).sort("display_order", 1).to_list(100)
+    for lang in languages:
+        lang['_id'] = str(lang['_id'])
+    return languages
+
+@api_router.get("/languages/{code}")
+async def get_language(code: str):
+    """Get language by code"""
+    language = await db.languages.find_one({"code": code})
+    if not language:
+        raise HTTPException(status_code=404, detail="Language not found")
+    language['_id'] = str(language['_id'])
+    return language
+
+@api_router.get("/translations/{azkar_id}/{language_code}")
+async def get_translation(azkar_id: int, language_code: str):
+    """Get translation for an azkar in specific language"""
+    translation = await db.translations.find_one({
+        "azkar_id": azkar_id,
+        "language_code": language_code
+    })
+    if translation:
+        translation['_id'] = str(translation['_id'])
+    return translation
+
+@api_router.get("/azkar/{azkar_id}/full")
+async def get_azkar_full(azkar_id: int, language_code: str = "en"):
+    """Get azkar with all translations and audio"""
+    azkar = await db.azkar.find_one({"id": azkar_id})
+    if not azkar:
+        raise HTTPException(status_code=404, detail="Azkar not found")
+    
+    azkar['_id'] = str(azkar['_id'])
+    
+    # Get translation if not Arabic
+    if language_code != "ar":
+        translation = await db.translations.find_one({
+            "azkar_id": azkar_id,
+            "language_code": language_code
+        })
+        if translation:
+            azkar['translation'] = translation.get('translation_text')
+            azkar['virtue_translated'] = translation.get('virtue_translated')
+            azkar['reference_translated'] = translation.get('reference_translated')
+    
+    # Get audio files
+    audio_files = await db.audio_files.find({"azkar_id": azkar_id}).to_list(10)
+    azkar['audio_files'] = [{**a, '_id': str(a['_id'])} for a in audio_files]
+    
+    return azkar
+
+# ============================================================
+# USER SETTINGS ENDPOINTS
+# ============================================================
+
+@api_router.get("/settings/{user_id}")
+async def get_user_settings(user_id: str = "default"):
+    """Get user settings"""
+    settings = await db.user_settings.find_one({"user_id": user_id})
+    if not settings:
+        # Return default settings
+        settings = {
+            "user_id": user_id,
+            "font_size": "medium",
+            "auto_play": False,
+            "playback_speed": "normal",
+            "show_translation": True,
+            "show_transliteration": True,
+            "dark_mode": False,
+            "language_code": "ar"
+        }
+        await db.user_settings.insert_one(settings)
+    
+    settings['_id'] = str(settings['_id'])
+    return settings
+
+@api_router.post("/settings/{user_id}")
+async def update_user_settings(user_id: str, settings: dict):
+    """Update user settings"""
+    await db.user_settings.update_one(
+        {"user_id": user_id},
+        {"$set": settings},
+        upsert=True
+    )
+    return {"success": True, "message": "Settings updated"}
+
+# ============================================================
+# ADMIN: TRANSLATION MANAGEMENT
+# ============================================================
+
+@api_router.post("/admin/translations")
+async def add_translation(translation: Translation):
+    """Add or update translation for an azkar"""
+    translation_dict = translation.dict(exclude_none=True)
+    
+    existing = await db.translations.find_one({
+        "azkar_id": translation.azkar_id,
+        "language_code": translation.language_code
+    })
+    
+    if existing:
+        await db.translations.update_one(
+            {"_id": existing["_id"]},
+            {"$set": translation_dict}
+        )
+        return {"success": True, "message": "Translation updated", "id": str(existing["_id"])}
+    else:
+        result = await db.translations.insert_one(translation_dict)
+        return {"success": True, "message": "Translation added", "id": str(result.inserted_id)}
+
+@api_router.get("/admin/translations/{azkar_id}")
+async def get_all_translations(azkar_id: int):
+    """Get all translations for an azkar"""
+    translations = await db.translations.find({"azkar_id": azkar_id}).to_list(100)
+    for t in translations:
+        t['_id'] = str(t['_id'])
+    return translations
+
+@api_router.post("/admin/audio")
+async def add_audio_file(audio: AudioFile):
+    """Add audio file record for an azkar"""
+    audio_dict = audio.dict(exclude_none=True)
+    result = await db.audio_files.insert_one(audio_dict)
+    return {"success": True, "id": str(result.inserted_id)}
+
+@api_router.post("/admin/seed-transliterations")
+async def seed_transliterations():
+    """Add transliterations to existing azkar"""
+    transliterations = [
+        {"id": 1, "transliteration": "Dhikr as-Sabah 1", "translation_en": "Morning Remembrance 1"},
+        {"id": 2, "transliteration": "Dhikr as-Sabah 2", "translation_en": "Morning Remembrance 2"},
+        {"id": 3, "transliteration": "Dhikr as-Sabah 3", "translation_en": "Morning Remembrance 3"},
+    ]
+    
+    # Sample real azkar with full translations
+    real_azkar = [
+        {
+            "category_id": 12,
+            "arabic_text": "سُبْحَانَ اللَّهِ",
+            "transliteration": "Subhan Allah",
+            "translation_en": "Glory be to Allah",
+            "repeat_count": 33,
+            "virtue_ar": "من قالها دبر كل صلاة غفرت خطاياه",
+            "virtue_en": "Whoever says it after every prayer will have his sins forgiven",
+            "reference_ar": "رواه مسلم",
+            "reference_en": "Narrated by Muslim",
+            "is_favorite": False
+        },
+        {
+            "category_id": 12,
+            "arabic_text": "الْحَمْدُ لِلَّهِ",
+            "transliteration": "Alhamdulillah",
+            "translation_en": "Praise be to Allah",
+            "repeat_count": 33,
+            "virtue_ar": "تملأ الميزان",
+            "virtue_en": "It fills the scale",
+            "reference_ar": "رواه مسلم",
+            "reference_en": "Narrated by Muslim",
+            "is_favorite": False
+        },
+        {
+            "category_id": 12,
+            "arabic_text": "اللَّهُ أَكْبَرُ",
+            "transliteration": "Allahu Akbar",
+            "translation_en": "Allah is the Greatest",
+            "repeat_count": 34,
+            "virtue_ar": "من قالها دبر كل صلاة غفرت خطاياه",
+            "virtue_en": "Whoever says it after every prayer will have his sins forgiven",
+            "reference_ar": "رواه مسلم",
+            "reference_en": "Narrated by Muslim",
+            "is_favorite": False
+        },
+        {
+            "category_id": 12,
+            "arabic_text": "لَا إِلَٰهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ",
+            "transliteration": "La ilaha illallahu wahdahu la shareeka lah, lahul mulku wa lahul hamdu wa huwa ala kulli shay'in qadeer",
+            "translation_en": "There is no god but Allah alone, without partner. To Him belongs dominion and praise and He is over all things competent.",
+            "repeat_count": 10,
+            "virtue_ar": "من قالها عشر مرات كان كمن أعتق أربعة أنفس",
+            "virtue_en": "Whoever says it ten times will be like one who freed four souls",
+            "reference_ar": "رواه البخاري ومسلم",
+            "reference_en": "Narrated by Al-Bukhari and Muslim",
+            "is_favorite": False
+        },
+        {
+            "category_id": 12,
+            "arabic_text": "أَسْتَغْفِرُ اللَّهَ",
+            "transliteration": "Astaghfirullah",
+            "translation_en": "I seek forgiveness from Allah",
+            "repeat_count": 100,
+            "virtue_ar": "من لزم الاستغفار جعل الله له من كل ضيق مخرجاً",
+            "virtue_en": "Whoever maintains seeking forgiveness, Allah will make for him a way out",
+            "reference_ar": "رواه أبو داود",
+            "reference_en": "Narrated by Abu Dawud",
+            "is_favorite": False
+        },
+        {
+            "category_id": 12,
+            "arabic_text": "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ",
+            "transliteration": "La hawla wa la quwwata illa billah",
+            "translation_en": "There is no might nor power except with Allah",
+            "repeat_count": 10,
+            "virtue_ar": "كنز من كنوز الجنة",
+            "virtue_en": "A treasure from the treasures of Paradise",
+            "reference_ar": "رواه البخاري ومسلم",
+            "reference_en": "Narrated by Al-Bukhari and Muslim",
+            "is_favorite": False
+        },
+        {
+            "category_id": 12,
+            "arabic_text": "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، سُبْحَانَ اللَّهِ الْعَظِيمِ",
+            "transliteration": "Subhan Allahi wa bihamdih, Subhan Allahil Adheem",
+            "translation_en": "Glory be to Allah and His is the praise, Glory be to Allah the Magnificent",
+            "repeat_count": 10,
+            "virtue_ar": "كلمتان خفيفتان على اللسان، ثقيلتان في الميزان، حبيبتان إلى الرحمن",
+            "virtue_en": "Two phrases light on the tongue, heavy in the scales, beloved to the Most Merciful",
+            "reference_ar": "رواه البخاري ومسلم",
+            "reference_en": "Narrated by Al-Bukhari and Muslim",
+            "is_favorite": False
+        },
+        {
+            "category_id": 14,
+            "arabic_text": "اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ",
+            "transliteration": "Allahumma anta Rabbi la ilaha illa anta, khalaqtani wa ana abduk, wa ana ala ahdika wa wa'dika mastata't",
+            "translation_en": "O Allah, You are my Lord, there is no god but You. You created me and I am Your servant. I am faithful to my covenant and promise as much as I am able.",
+            "repeat_count": 1,
+            "virtue_ar": "من قالها موقنًا بها فمات من يومه فهو من أهل الجنة",
+            "virtue_en": "Whoever says it with conviction and dies that day will be among the people of Paradise",
+            "reference_ar": "رواه البخاري",
+            "reference_en": "Narrated by Al-Bukhari",
+            "is_favorite": False
+        },
+    ]
+    
+    # Insert real azkar for category 12 and 14
+    for i, azkar in enumerate(real_azkar, start=100):
+        azkar['id'] = i
+        await db.azkar.update_one(
+            {"id": i},
+            {"$set": azkar},
+            upsert=True
+        )
+    
+    # Update existing azkar with transliterations
+    for item in transliterations:
+        await db.azkar.update_one(
+            {"id": item["id"]},
+            {"$set": {"transliteration": item["transliteration"], "translation_en": item["translation_en"]}}
+        )
+    
+    return {"success": True, "message": f"Added {len(real_azkar)} real azkar with transliterations"}
+
+
+@api_router.get("/admin/audio/{azkar_id}")
+async def get_audio_files(azkar_id: int):
+    """Get all audio files for an azkar"""
+    audio_files = await db.audio_files.find({"azkar_id": azkar_id}).to_list(100)
+    for a in audio_files:
+        a['_id'] = str(a['_id'])
+    return audio_files
 
 # Include routers
 app.include_router(api_router)

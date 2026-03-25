@@ -80,7 +80,11 @@
     "removeFromFavorites": "Remove from Favorites",
     "completed": "Completed",
     "remaining": "Remaining",
-    "noAzkar": "No adhkar in this category"
+    "noAzkar": "No adhkar in this category",
+    "detail": "Adhkar Detail",
+    "counter": "Counter",
+    "count": "Count",
+    "reset": "Reset"
   },
   "events": {
     "title": "Islamic Events",
