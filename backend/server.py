@@ -107,6 +107,20 @@ class ExemptionRequest(BaseModel):
     prayer_text: Optional[str] = None
     request_date: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
+class PurchaseRecord(BaseModel):
+    user_id: str
+    product_id: str
+    transaction_id: str
+    purchase_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    price: float = 0.50
+    currency: str = "USD"
+    store: str = "app_store"  # app_store, play_store
+
+class RevenueCatWebhook(BaseModel):
+    event: dict
+    api_version: Optional[str] = None
+
 class AIMessage(BaseModel):
     user_message: str
     ai_response: Optional[str] = None
@@ -505,6 +519,7 @@ async def request_exemption(request: ExemptionRequest):
         "granted_date": datetime.utcnow().isoformat(),
         "expiry_date": exemption_end.isoformat(),
         "prayer_text": request.prayer_text,
+        "status": "approved",
         "is_synced": False
     }
     
@@ -515,6 +530,233 @@ async def request_exemption(request: ExemptionRequest):
         "message": "بارك الله فيك، تقبل الله دعاءك",
         "expiry_date": exemption_end.isoformat()
     }
+
+# ============================================================
+# PAYMENT & SUBSCRIPTION ENDPOINTS
+# ============================================================
+
+@api_router.post("/subscription/purchase")
+async def record_purchase(purchase: PurchaseRecord):
+    """Record a purchase from RevenueCat"""
+    sub = await db.subscription_info.find_one({"user_id": purchase.user_id})
+    
+    if not sub:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update subscription status
+    expiry = purchase.expiry_date or (datetime.utcnow() + timedelta(days=365)).isoformat()
+    
+    await db.subscription_info.update_one(
+        {"user_id": purchase.user_id},
+        {"$set": {
+            "subscription_status": "active",
+            "subscription_end_date": expiry,
+            "last_purchase_date": datetime.utcnow().isoformat(),
+        }}
+    )
+    
+    # Record the purchase
+    purchase_record = {
+        "user_id": purchase.user_id,
+        "product_id": purchase.product_id,
+        "transaction_id": purchase.transaction_id,
+        "purchase_date": purchase.purchase_date or datetime.utcnow().isoformat(),
+        "expiry_date": expiry,
+        "price": purchase.price,
+        "currency": purchase.currency,
+        "store": purchase.store,
+        "is_active": True,
+        "created_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.purchases.insert_one(purchase_record)
+    
+    return {"success": True, "message": "تم تسجيل الشراء بنجاح", "expiry_date": expiry}
+
+@api_router.post("/subscription/revenuecat-webhook")
+async def revenuecat_webhook(webhook: RevenueCatWebhook):
+    """Handle RevenueCat server-to-server webhook"""
+    event = webhook.event
+    event_type = event.get("type", "")
+    app_user_id = event.get("app_user_id", "")
+    
+    logger.info(f"RevenueCat webhook: {event_type} for user {app_user_id}")
+    
+    # Record webhook event
+    webhook_record = {
+        "event_type": event_type,
+        "app_user_id": app_user_id,
+        "event_data": event,
+        "received_at": datetime.utcnow().isoformat(),
+    }
+    await db.webhook_events.insert_one(webhook_record)
+    
+    # Handle different event types
+    if event_type in ["INITIAL_PURCHASE", "RENEWAL", "PRODUCT_CHANGE"]:
+        # Activate subscription
+        expiry = event.get("expiration_at_ms")
+        if expiry:
+            expiry_date = datetime.fromtimestamp(expiry / 1000).isoformat()
+        else:
+            expiry_date = (datetime.utcnow() + timedelta(days=365)).isoformat()
+        
+        await db.subscription_info.update_one(
+            {"user_id": app_user_id},
+            {"$set": {
+                "subscription_status": "active",
+                "subscription_end_date": expiry_date,
+                "last_purchase_date": datetime.utcnow().isoformat(),
+            }},
+            upsert=True
+        )
+        
+        # Record purchase
+        purchase_data = {
+            "user_id": app_user_id,
+            "product_id": event.get("product_id", "yearly_subscription"),
+            "transaction_id": event.get("transaction_id", ""),
+            "purchase_date": datetime.utcnow().isoformat(),
+            "expiry_date": expiry_date,
+            "price": event.get("price", 0.50),
+            "currency": event.get("currency", "USD"),
+            "store": event.get("store", "unknown"),
+            "is_active": True,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        await db.purchases.insert_one(purchase_data)
+        
+    elif event_type in ["CANCELLATION", "EXPIRATION"]:
+        # Deactivate subscription
+        await db.subscription_info.update_one(
+            {"user_id": app_user_id},
+            {"$set": {"subscription_status": "expired"}}
+        )
+        # Mark purchase as inactive
+        await db.purchases.update_many(
+            {"user_id": app_user_id, "is_active": True},
+            {"$set": {"is_active": False}}
+        )
+    
+    return {"success": True}
+
+@api_router.get("/subscription/verify")
+async def verify_subscription(user_id: str = "default"):
+    """Verify current subscription status"""
+    sub = await db.subscription_info.find_one({"user_id": user_id})
+    
+    if not sub:
+        return {"is_active": False, "status": "none", "days_remaining": 0}
+    
+    status = sub.get("subscription_status", "trial")
+    end_date_str = sub.get("subscription_end_date") or sub.get("trial_end_date", "")
+    
+    days_remaining = 0
+    is_active = False
+    
+    if sub.get("is_lifetime"):
+        is_active = True
+        days_remaining = 999999
+    elif end_date_str:
+        try:
+            end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00').replace('+00:00', ''))
+            diff = end_date - datetime.utcnow()
+            days_remaining = max(0, diff.days)
+            is_active = days_remaining > 0
+        except Exception:
+            pass
+    
+    # Check if subscription expired
+    if not is_active and status in ["active", "trial", "exemption"]:
+        await db.subscription_info.update_one(
+            {"user_id": user_id},
+            {"$set": {"subscription_status": "expired"}}
+        )
+        status = "expired"
+    
+    return {
+        "is_active": is_active or sub.get("is_lifetime", False),
+        "status": status,
+        "days_remaining": days_remaining,
+        "is_lifetime": sub.get("is_lifetime", False),
+        "exemption_used": sub.get("exemption_used", False),
+    }
+
+@api_router.get("/revenue/stats")
+async def get_revenue_stats():
+    """Get revenue statistics"""
+    # Total purchases
+    total_purchases = await db.purchases.count_documents({"is_active": True})
+    
+    # Total revenue
+    pipeline = [
+        {"$match": {"is_active": True}},
+        {"$group": {"_id": None, "total": {"$sum": "$price"}}}
+    ]
+    revenue_result = await db.purchases.aggregate(pipeline).to_list(1)
+    total_revenue = revenue_result[0]["total"] if revenue_result else 0
+    
+    # This month's revenue
+    month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0)
+    month_pipeline = [
+        {"$match": {"created_at": {"$gte": month_start.isoformat()}}},
+        {"$group": {"_id": None, "total": {"$sum": "$price"}}}
+    ]
+    month_result = await db.purchases.aggregate(month_pipeline).to_list(1)
+    monthly_revenue = month_result[0]["total"] if month_result else 0
+    
+    # Monthly revenue chart (last 12 months)
+    monthly_chart = []
+    for i in range(12):
+        month_date = datetime.utcnow() - timedelta(days=i * 30)
+        m_start = month_date.replace(day=1).isoformat()[:7]  # YYYY-MM
+        m_pipeline = [
+            {"$match": {"created_at": {"$regex": f"^{m_start}"}}},
+            {"$group": {"_id": None, "total": {"$sum": "$price"}, "count": {"$sum": 1}}}
+        ]
+        m_result = await db.purchases.aggregate(m_pipeline).to_list(1)
+        monthly_chart.append({
+            "month": m_start,
+            "revenue": m_result[0]["total"] if m_result else 0,
+            "count": m_result[0]["count"] if m_result else 0,
+        })
+    
+    # Recent purchases
+    recent = await db.purchases.find().sort("created_at", -1).to_list(20)
+    for p in recent:
+        p["_id"] = str(p["_id"])
+    
+    # Paid subscribers count
+    paid_count = await db.subscription_info.count_documents({"subscription_status": "active"})
+    
+    # Exemption count
+    exemption_count = await db.subscription_info.count_documents({"exemption_used": True})
+    
+    return {
+        "total_revenue": total_revenue,
+        "monthly_revenue": monthly_revenue,
+        "total_purchases": total_purchases,
+        "paid_subscribers": paid_count,
+        "exemption_users": exemption_count,
+        "monthly_chart": list(reversed(monthly_chart)),
+        "recent_purchases": recent,
+    }
+
+@api_router.get("/payment-settings")
+async def get_payment_settings():
+    """Get payment configuration (for admin)"""
+    settings = await db.admin_settings.find_one({"key": "payment_settings"})
+    if not settings:
+        default = {
+            "key": "payment_settings",
+            "revenuecat_configured": False,
+            "stripe_configured": False,
+            "subscription_price": 0.50,
+            "is_live_mode": False,
+        }
+        await db.admin_settings.insert_one(default)
+        return default
+    settings["_id"] = str(settings["_id"])
+    return settings
 
 # AI Chat (placeholder for GPT-4 integration)
 @api_router.post("/ai/chat")

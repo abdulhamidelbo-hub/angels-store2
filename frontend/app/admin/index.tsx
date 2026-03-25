@@ -10,6 +10,7 @@ import { ADMIN_COLORS } from '../../src/constants/adminColors';
 import { apiService } from '../../src/services/api';
 
 const MENU_ITEMS = [
+  { key: 'revenue', title: 'الإيرادات', icon: 'cash', route: '/admin/revenue' },
   { key: 'azkar', title: 'إدارة الأذكار', icon: 'book', route: '/admin/azkar' },
   { key: 'events', title: 'إدارة المناسبات', icon: 'calendar', route: '/admin/events' },
   { key: 'challenges', title: 'إدارة التحديات', icon: 'trophy', route: '/admin/challenges' },

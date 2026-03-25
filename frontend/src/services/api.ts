@@ -285,4 +285,25 @@ export const apiService = {
     const response = await api.get('/admin/categories');
     return response.data;
   },
+
+  // Payment & Revenue
+  async recordPurchase(data: any): Promise<any> {
+    const response = await api.post('/subscription/purchase', data);
+    return response.data;
+  },
+
+  async verifySubscription(userId: string = 'default'): Promise<any> {
+    const response = await api.get('/subscription/verify', { params: { user_id: userId } });
+    return response.data;
+  },
+
+  async getRevenueStats(): Promise<any> {
+    const response = await api.get('/revenue/stats');
+    return response.data;
+  },
+
+  async getPaymentSettings(): Promise<any> {
+    const response = await api.get('/payment-settings');
+    return response.data;
+  },
 };

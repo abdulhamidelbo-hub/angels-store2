@@ -17,6 +17,7 @@ export default function AdminLayout() {
       <Stack.Screen name="exemptions" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="admin-settings" />
+      <Stack.Screen name="revenue" />
     </Stack>
   );
 }
