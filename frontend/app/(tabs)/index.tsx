@@ -8,6 +8,7 @@ import {
   StatusBar,
   Pressable,
   Dimensions,
+  I18nManager,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,8 +24,10 @@ import Animated, {
   withSequence,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { THEME } from '../../src/constants/theme';
 import { useApp } from '../../src/contexts/AppContext';
+import { useLanguage } from '../../src/contexts/LanguageContext';
 import { apiService } from '../../src/services/api';
 import { IslamicEvent } from '../../src/types';
 import {
@@ -39,6 +42,8 @@ const { width } = Dimensions.get('window');
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const { isRTL } = useLanguage();
   const { todayStats, refreshStats } = useApp();
   const [refreshing, setRefreshing] = useState(false);
   const [nextEvent, setNextEvent] = useState<IslamicEvent | null>(null);
@@ -80,22 +85,22 @@ export default function HomeScreen() {
 
   const tasbeehMethods = [
     {
-      title: 'باللمس',
-      description: 'اضغط للتسبيح',
+      title: t('home.touch'),
+      description: t('home.touchDesc'),
       icon: 'hand-left' as const,
       gradient: THEME.gradients.primary,
       route: '/tasbeeh/touch',
     },
     {
-      title: 'بالصوت',
-      description: 'قل وسيُعدّ',
+      title: t('home.voice'),
+      description: t('home.voiceDesc'),
       icon: 'mic' as const,
       gradient: THEME.gradients.gold,
       route: '/tasbeeh/voice',
     },
     {
-      title: 'المساعد الذكي',
-      description: 'AI مساعد',
+      title: t('home.aiAssistant'),
+      description: t('home.aiDesc'),
       icon: 'sparkles' as const,
       gradient: ['#667eea', '#764ba2'] as const,
       route: '/tasbeeh/ai',
@@ -103,10 +108,10 @@ export default function HomeScreen() {
   ];
 
   const quickActions = [
-    { title: 'الأذكار', icon: 'book' as const, route: '/(tabs)/categories', color: THEME.colors.primary },
-    { title: 'مواقيت الصلاة', icon: 'time' as const, route: '/prayer-times', color: THEME.colors.gold },
-    { title: 'التحديات', icon: 'trophy' as const, route: '/challenges', color: '#FF6B6B' },
-    { title: 'الاشتراك', icon: 'diamond' as const, route: '/subscription', color: '#667eea' },
+    { title: t('tabs.azkar'), icon: 'book' as const, route: '/(tabs)/categories', color: THEME.colors.primary },
+    { title: t('home.prayerTimes'), icon: 'time' as const, route: '/prayer-times', color: THEME.colors.gold },
+    { title: t('home.challenges'), icon: 'trophy' as const, route: '/challenges', color: '#FF6B6B' },
+    { title: t('home.subscription'), icon: 'diamond' as const, route: '/subscription', color: '#667eea' },
   ];
 
   return (
@@ -120,10 +125,10 @@ export default function HomeScreen() {
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
-        <Animated.View style={[styles.headerContent, headerStyle]}>
+        <Animated.View style={[styles.headerContent, headerStyle, isRTL && styles.headerContentRTL]}>
           <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>السلام عليكم</Text>
-            <Text style={styles.subtitle}>بسم الله نبدأ يومنا</Text>
+            <Text style={[styles.greeting, isRTL && styles.textRTL]}>{t('home.greeting')}</Text>
+            <Text style={[styles.subtitle, isRTL && styles.textRTL]}>{t('home.subtitle')}</Text>
           </View>
           <Pressable
             style={({ pressed }) => [
@@ -164,8 +169,8 @@ export default function HomeScreen() {
 
         {/* Tasbeeh Methods */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>طرق التسبيح</Text>
-          <View style={styles.tasbeehRow}>
+          <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>{t('home.tasbeehMethods')}</Text>
+          <View style={[styles.tasbeehRow, isRTL && styles.rowRTL]}>
             {tasbeehMethods.map((method, index) => (
               <TasbeehMethodCard
                 key={method.route}
@@ -186,28 +191,28 @@ export default function HomeScreen() {
         {/* Next Event */}
         {nextEvent && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>المناسبة القادمة</Text>
+            <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>{t('home.upcomingEvent')}</Text>
             <AnimatedCard
               delay={200}
               onPress={() => router.push(`/events/${nextEvent.id}` as any)}
             >
-              <View style={styles.eventContent}>
+              <View style={[styles.eventContent, isRTL && styles.rowRTL]}>
                 <LinearGradient
                   colors={THEME.gradients.sunrise}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={styles.eventIconContainer}
+                  style={[styles.eventIconContainer, isRTL && styles.eventIconContainerRTL]}
                 >
                   <Ionicons name="calendar" size={28} color="#FFFFFF" />
                 </LinearGradient>
                 <View style={styles.eventTextContainer}>
-                  <Text style={styles.eventTitle}>{nextEvent.name_ar}</Text>
-                  <Text style={styles.eventDescription} numberOfLines={2}>
-                    {nextEvent.description_ar || 'اضغط للمزيد من التفاصيل'}
+                  <Text style={[styles.eventTitle, isRTL && styles.textRTL]}>{nextEvent.name_ar}</Text>
+                  <Text style={[styles.eventDescription, isRTL && styles.textRTL]} numberOfLines={2}>
+                    {nextEvent.description_ar || t('common.loading')}
                   </Text>
                 </View>
                 <Ionicons
-                  name="chevron-forward"
+                  name={isRTL ? "chevron-back" : "chevron-forward"}
                   size={22}
                   color={THEME.colors.textMuted}
                 />
@@ -218,8 +223,8 @@ export default function HomeScreen() {
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>وصول سريع</Text>
-          <View style={styles.quickActionsRow}>
+          <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>{t('home.quickAccess')}</Text>
+          <View style={[styles.quickActionsRow, isRTL && styles.rowRTL]}>
             {quickActions.map((action, index) => (
               <QuickActionButton
                 key={action.route}
@@ -249,7 +254,7 @@ export default function HomeScreen() {
               <Text style={styles.motivationText}>
                 "إِنَّ اللَّهَ يُحِبُّ إِذَا عَمِلَ أَحَدُكُمْ عَمَلًا أَنْ يُتْقِنَهُ"
               </Text>
-              <Text style={styles.motivationSource}>حديث شريف</Text>
+              <Text style={styles.motivationSource}>{t('home.dailyMotivation')}</Text>
             </View>
           </AnimatedCard>
         </View>
@@ -277,6 +282,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  headerContentRTL: {
+    flexDirection: 'row-reverse',
+  },
   headerLeft: {
     flex: 1,
   },
@@ -289,6 +297,12 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: 'rgba(255,255,255,0.85)',
+  },
+  textRTL: {
+    textAlign: 'right',
+  },
+  rowRTL: {
+    flexDirection: 'row-reverse',
   },
   notificationButton: {
     width: 48,
@@ -338,6 +352,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: THEME.spacing.md,
+  },
+  eventIconContainerRTL: {
+    marginRight: 0,
+    marginLeft: THEME.spacing.md,
   },
   eventTextContainer: {
     flex: 1,

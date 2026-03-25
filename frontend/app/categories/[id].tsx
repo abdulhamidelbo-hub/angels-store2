@@ -23,18 +23,24 @@ import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { THEME } from '../../src/constants/theme';
+import { useLanguage } from '../../src/contexts/LanguageContext';
 import { apiService } from '../../src/services/api';
 import { Azkar } from '../../src/types';
+import { ListenButton } from '../../src/components/ui';
 
 interface AzkarCardProps {
   item: Azkar;
   index: number;
   onPress: () => void;
   onFavorite: () => void;
+  isRTL: boolean;
+  currentLanguage: string;
+  t: (key: string) => string;
 }
 
-const AzkarCard: React.FC<AzkarCardProps> = ({ item, index, onPress, onFavorite }) => {
+const AzkarCard: React.FC<AzkarCardProps> = ({ item, index, onPress, onFavorite, isRTL, currentLanguage, t }) => {
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(30);
   const isPressed = useSharedValue(false);
@@ -94,7 +100,7 @@ const AzkarCard: React.FC<AzkarCardProps> = ({ item, index, onPress, onFavorite 
       >
         <View style={styles.azkarCard}>
           {/* Header */}
-          <View style={styles.azkarHeader}>
+          <View style={[styles.azkarHeader, isRTL && styles.rowRTL]}>
             <LinearGradient
               colors={THEME.gradients.gold}
               start={{ x: 0, y: 0 }}
@@ -103,21 +109,54 @@ const AzkarCard: React.FC<AzkarCardProps> = ({ item, index, onPress, onFavorite 
             >
               <Text style={styles.repeatText}>×{item.repeat_count}</Text>
             </LinearGradient>
-            <Pressable style={styles.favoriteButton} onPress={handleFavorite}>
-              <Animated.View style={heartStyle}>
-                <Ionicons
-                  name={item.is_favorite ? 'heart' : 'heart-outline'}
-                  size={24}
-                  color={item.is_favorite ? '#FF6B6B' : THEME.colors.textMuted}
-                />
-              </Animated.View>
-            </Pressable>
+            <View style={styles.headerActions}>
+              <ListenButton
+                text={item.arabic_text}
+                language="ar"
+                size="small"
+                showLabel={false}
+              />
+              <Pressable style={styles.favoriteButton} onPress={handleFavorite}>
+                <Animated.View style={heartStyle}>
+                  <Ionicons
+                    name={item.is_favorite ? 'heart' : 'heart-outline'}
+                    size={24}
+                    color={item.is_favorite ? '#FF6B6B' : THEME.colors.textMuted}
+                  />
+                </Animated.View>
+              </Pressable>
+            </View>
           </View>
 
           {/* Arabic Text */}
           <Text style={styles.arabicText} numberOfLines={3}>
             {item.arabic_text}
           </Text>
+
+          {/* Transliteration (if available) */}
+          {item.transliteration && (
+            <View style={styles.transliterationContainer}>
+              <Ionicons name="text" size={14} color={THEME.colors.textMuted} />
+              <Text style={styles.transliterationText} numberOfLines={2}>
+                {item.transliteration}
+              </Text>
+            </View>
+          )}
+
+          {/* Translation (for non-Arabic languages) */}
+          {currentLanguage !== 'ar' && item.translation_en && (
+            <View style={styles.translationContainer}>
+              <View style={[styles.translationHeader, isRTL && styles.rowRTL]}>
+                <Ionicons name="language" size={14} color={THEME.colors.primary} />
+                <Text style={[styles.translationLabel, isRTL && { marginRight: 6, marginLeft: 0 }]}>
+                  {t('azkar.translation')}
+                </Text>
+              </View>
+              <Text style={[styles.translationText, isRTL && styles.textRTL]}>
+                {item.translation_en}
+              </Text>
+            </View>
+          )}
 
           {/* Virtue */}
           {item.virtue_ar && (
@@ -135,11 +174,11 @@ const AzkarCard: React.FC<AzkarCardProps> = ({ item, index, onPress, onFavorite 
           )}
 
           {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.reference}>{item.reference_ar || 'مصدر موثوق'}</Text>
-            <View style={styles.arrowContainer}>
-              <Text style={styles.readMore}>اقرأ المزيد</Text>
-              <Ionicons name="chevron-forward" size={18} color={THEME.colors.primary} />
+          <View style={[styles.footer, isRTL && styles.rowRTL]}>
+            <Text style={[styles.reference, isRTL && styles.textRTL]}>{item.reference_ar || t('azkar.reference')}</Text>
+            <View style={[styles.arrowContainer, isRTL && styles.rowRTL]}>
+              <Text style={styles.readMore}>{t('common.next')}</Text>
+              <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={18} color={THEME.colors.primary} />
             </View>
           </View>
         </View>
@@ -151,6 +190,8 @@ const AzkarCard: React.FC<AzkarCardProps> = ({ item, index, onPress, onFavorite 
 export default function CategoryDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const { isRTL, currentLanguage } = useLanguage();
   const { id } = useLocalSearchParams();
   const [azkar, setAzkar] = useState<Azkar[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,16 +251,16 @@ export default function CategoryDetailScreen() {
           colors={THEME.gradients.header}
           style={[styles.header, { paddingTop: insets.top + 8 }]}
         >
-          <View style={styles.headerContent}>
+          <View style={[styles.headerContent, isRTL && styles.headerContentRTL]}>
             <Pressable style={styles.headerButton} onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={24} color="#FFFFFF" />
             </Pressable>
-            <Text style={styles.headerTitle}>جاري التحميل...</Text>
+            <Text style={styles.headerTitle}>{t('common.loading')}</Text>
             <View style={styles.headerPlaceholder} />
           </View>
         </LinearGradient>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>جاري تحميل الأذكار...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       </View>
     );
@@ -238,7 +279,7 @@ export default function CategoryDetailScreen() {
       >
         <Animated.View
           entering={FadeInDown.springify()}
-          style={styles.headerContent}
+          style={[styles.headerContent, isRTL && styles.headerContentRTL]}
         >
           <Pressable
             style={({ pressed }) => [
@@ -250,11 +291,11 @@ export default function CategoryDetailScreen() {
               router.back();
             }}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={24} color="#FFFFFF" />
           </Pressable>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>{categoryName}</Text>
-            <Text style={styles.headerSubtitle}>{azkar.length} ذكر</Text>
+            <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{categoryName}</Text>
+            <Text style={[styles.headerSubtitle, isRTL && styles.textRTL]}>{azkar.length} {t('azkar.title')}</Text>
           </View>
           <View style={styles.headerPlaceholder} />
         </Animated.View>
@@ -269,6 +310,9 @@ export default function CategoryDetailScreen() {
             index={index}
             onPress={() => router.push(`/azkar/${item.id}`)}
             onFavorite={() => toggleFavorite(item.id!)}
+            isRTL={isRTL}
+            currentLanguage={currentLanguage?.code || 'ar'}
+            t={t}
           />
         )}
         keyExtractor={(item, index) => item.id?.toString() || index.toString()}
@@ -287,7 +331,7 @@ export default function CategoryDetailScreen() {
             <View style={styles.emptyIconContainer}>
               <Ionicons name="book-outline" size={48} color={THEME.colors.textMuted} />
             </View>
-            <Text style={styles.emptyText}>لا توجد أذكار في هذا التصنيف</Text>
+            <Text style={[styles.emptyText, isRTL && styles.textRTL]}>{t('azkar.noAzkar')}</Text>
           </View>
         }
       />
@@ -310,6 +354,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  headerContentRTL: {
+    flexDirection: 'row-reverse',
   },
   headerButton: {
     width: 44,
@@ -340,6 +387,12 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
   },
+  textRTL: {
+    textAlign: 'right',
+  },
+  rowRTL: {
+    flexDirection: 'row-reverse',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -366,6 +419,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: THEME.spacing.md,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   repeatBadge: {
     borderRadius: THEME.borderRadius.md,
     paddingHorizontal: 14,
@@ -388,6 +446,46 @@ const styles = StyleSheet.create({
     color: THEME.colors.text,
     textAlign: 'right',
     marginBottom: THEME.spacing.md,
+  },
+  transliterationContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: THEME.colors.background,
+    borderRadius: THEME.borderRadius.md,
+    padding: THEME.spacing.sm,
+    marginBottom: THEME.spacing.md,
+  },
+  transliterationText: {
+    flex: 1,
+    fontSize: 14,
+    color: THEME.colors.textMuted,
+    fontStyle: 'italic',
+    marginLeft: THEME.spacing.sm,
+    lineHeight: 22,
+  },
+  translationContainer: {
+    backgroundColor: THEME.colors.primary + '08',
+    borderRadius: THEME.borderRadius.md,
+    padding: THEME.spacing.md,
+    marginBottom: THEME.spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: THEME.colors.primary,
+  },
+  translationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: THEME.spacing.xs,
+  },
+  translationLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.colors.primary,
+    marginLeft: 6,
+  },
+  translationText: {
+    fontSize: 15,
+    color: THEME.colors.text,
+    lineHeight: 24,
   },
   virtueContainer: {
     flexDirection: 'row',

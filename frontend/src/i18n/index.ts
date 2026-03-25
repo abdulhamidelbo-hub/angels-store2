@@ -27,34 +27,30 @@ const getInitialLanguage = async (): Promise<string> => {
   try {
     const savedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
     if (savedLanguage && LANGUAGES.find(lang => lang.code === savedLanguage)) {
+      console.log('Using saved language:', savedLanguage);
       return savedLanguage;
     }
   } catch (error) {
     console.log('Error getting saved language:', error);
   }
 
-  // Get device language
-  const deviceLanguage = Localization.locale.split('-')[0];
-  
-  // Check if device language is supported
-  if (LANGUAGES.find(lang => lang.code === deviceLanguage)) {
-    return deviceLanguage;
-  }
-
-  // Default to Arabic
+  // Default to Arabic for first-time users
+  // This ensures Arabic is the primary language
+  console.log('No saved language found, defaulting to Arabic');
   return 'ar';
 };
 
 // Initialize i18n
 const initI18n = async () => {
   const initialLanguage = await getInitialLanguage();
+  console.log('Initializing i18n with language:', initialLanguage);
 
   await i18n
     .use(initReactI18next)
     .init({
       resources,
       lng: initialLanguage,
-      fallbackLng: 'en',
+      fallbackLng: 'ar', // Changed to Arabic as fallback
       compatibilityJSON: 'v4',
       interpolation: {
         escapeValue: false,

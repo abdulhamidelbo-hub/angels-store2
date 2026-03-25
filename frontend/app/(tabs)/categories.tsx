@@ -20,7 +20,9 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { THEME } from '../../src/constants/theme';
+import { useLanguage } from '../../src/contexts/LanguageContext';
 import { apiService } from '../../src/services/api';
 import { Category } from '../../src/types';
 import { CategoryCard } from '../../src/components/ui';
@@ -28,6 +30,8 @@ import { CategoryCard } from '../../src/components/ui';
 export default function CategoriesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const { isRTL, currentLanguage } = useLanguage();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -102,6 +106,8 @@ export default function CategoriesScreen() {
       }}
       delay={index * 60}
       variant={viewMode}
+      isRTL={isRTL}
+      currentLanguage={currentLanguage?.code || 'ar'}
     />
   );
 
@@ -113,10 +119,10 @@ export default function CategoriesScreen() {
           colors={THEME.gradients.header}
           style={[styles.header, { paddingTop: insets.top + 8 }]}
         >
-          <Text style={styles.headerTitle}>تصنيفات الأذكار</Text>
+          <Text style={styles.headerTitle}>{t('categories.title')}</Text>
         </LinearGradient>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>جاري التحميل...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       </View>
     );
@@ -133,10 +139,10 @@ export default function CategoriesScreen() {
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
-        <Animated.View style={[styles.headerContent, headerStyle]}>
+        <Animated.View style={[styles.headerContent, headerStyle, isRTL && styles.headerContentRTL]}>
           <View>
-            <Text style={styles.headerTitle}>تصنيفات الأذكار</Text>
-            <Text style={styles.headerSubtitle}>{categories.length} تصنيف متاح</Text>
+            <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{t('categories.title')}</Text>
+            <Text style={[styles.headerSubtitle, isRTL && styles.textRTL]}>{categories.length} {t('categories.available')}</Text>
           </View>
           <Pressable
             style={({ pressed }) => [
@@ -195,6 +201,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  headerContentRTL: {
+    flexDirection: 'row-reverse',
+  },
   headerTitle: {
     fontSize: 26,
     fontWeight: '700',
@@ -204,6 +213,9 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.85)',
+  },
+  textRTL: {
+    textAlign: 'right',
   },
   viewModeButton: {
     width: 44,

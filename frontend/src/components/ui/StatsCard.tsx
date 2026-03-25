@@ -15,6 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { THEME } from '../../constants/theme';
 
 interface StatItemProps {
@@ -74,6 +75,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   xpEarned,
   completedAzkar,
 }) => {
+  const { t } = useTranslation();
   const cardOpacity = useSharedValue(0);
   const cardTranslateY = useSharedValue(30);
 
@@ -98,21 +100,21 @@ export const StatsCard: React.FC<StatsCardProps> = ({
         <View style={styles.statsRow}>
           <StatItem
             value={totalTasbeeh}
-            label="تسبيحة"
+            label={t('stats.todayTasbeeh')}
             icon="heart"
             delay={100}
           />
           <View style={styles.divider} />
           <StatItem
             value={xpEarned}
-            label="نقطة XP"
+            label={t('stats.xpPoints')}
             icon="star"
             delay={200}
           />
           <View style={styles.divider} />
           <StatItem
             value={completedAzkar}
-            label="ذكر مكتمل"
+            label={t('stats.completedAzkar')}
             icon="checkmark-circle"
             delay={300}
           />

@@ -22,7 +22,9 @@ import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { THEME } from '../../src/constants/theme';
+import { useLanguage } from '../../src/contexts/LanguageContext';
 import { apiService } from '../../src/services/api';
 import { IslamicEvent } from '../../src/types';
 
@@ -138,6 +140,8 @@ const EventCard: React.FC<{
 export default function EventsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const { isRTL, currentLanguage } = useLanguage();
   const [events, setEvents] = useState<IslamicEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -172,10 +176,10 @@ export default function EventsScreen() {
           colors={THEME.gradients.header}
           style={[styles.header, { paddingTop: insets.top + 8 }]}
         >
-          <Text style={styles.headerTitle}>المناسبات الدينية</Text>
+          <Text style={styles.headerTitle}>{t('events.title')}</Text>
         </LinearGradient>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>جاري التحميل...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       </View>
     );
@@ -193,8 +197,8 @@ export default function EventsScreen() {
         style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
         <Animated.View entering={FadeInDown.springify()}>
-          <Text style={styles.headerTitle}>المناسبات الدينية</Text>
-          <Text style={styles.headerSubtitle}>{events.length} مناسبة إسلامية</Text>
+          <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{t('events.title')}</Text>
+          <Text style={[styles.headerSubtitle, isRTL && styles.textRTL]}>{events.length} {t('events.islamicEvent')}</Text>
         </Animated.View>
       </LinearGradient>
 
@@ -243,6 +247,9 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.85)',
+  },
+  textRTL: {
+    textAlign: 'right',
   },
   loadingContainer: {
     flex: 1,

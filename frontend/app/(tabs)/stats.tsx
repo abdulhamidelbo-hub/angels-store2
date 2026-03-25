@@ -11,8 +11,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { THEME } from '../../src/constants/theme';
 import { useApp } from '../../src/contexts/AppContext';
+import { useLanguage } from '../../src/contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -59,29 +61,31 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ progress, label, color }) => 
 
 export default function StatsScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const { isRTL } = useLanguage();
   const { todayStats } = useApp();
 
   const stats = [
     {
-      title: 'تسبيحات اليوم',
+      title: t('stats.todayTasbeeh'),
       value: todayStats?.total_tasbeeh || 0,
       icon: 'heart' as const,
       color: THEME.colors.primary,
     },
     {
-      title: 'نقاط XP',
+      title: t('stats.xpPoints'),
       value: todayStats?.xp_earned || 0,
       icon: 'star' as const,
       color: THEME.colors.gold,
     },
     {
-      title: 'أذكار مكتملة',
+      title: t('stats.completedAzkar'),
       value: todayStats?.completed_azkar_count || 0,
       icon: 'checkmark-circle' as const,
       color: '#00B894',
     },
     {
-      title: 'سلسلة الأيام',
+      title: t('stats.streakDays'),
       value: todayStats?.streak_days || 0,
       icon: 'flame' as const,
       color: '#FF6B6B',
@@ -89,10 +93,10 @@ export default function StatsScreen() {
   ];
 
   const achievements = [
-    { label: 'أذكار الصباح', progress: 75, color: THEME.colors.primary },
-    { label: 'أذكار المساء', progress: 60, color: '#764BA2' },
-    { label: 'تحدي الأسبوع', progress: 40, color: THEME.colors.gold },
-    { label: 'هدف الشهر', progress: 25, color: '#FF6B6B' },
+    { label: t('stats.morningAzkar'), progress: 75, color: THEME.colors.primary },
+    { label: t('stats.eveningAzkar'), progress: 60, color: '#764BA2' },
+    { label: t('stats.weeklyChallenge'), progress: 40, color: THEME.colors.gold },
+    { label: t('stats.monthlyGoal'), progress: 25, color: '#FF6B6B' },
   ];
 
   return (
@@ -107,8 +111,8 @@ export default function StatsScreen() {
         style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
         <Animated.View entering={FadeInDown.springify()}>
-          <Text style={styles.headerTitle}>إحصائياتي</Text>
-          <Text style={styles.headerSubtitle}>تتبع تقدمك اليومي</Text>
+          <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{t('stats.title')}</Text>
+          <Text style={[styles.headerSubtitle, isRTL && styles.textRTL]}>{t('stats.subtitle')}</Text>
         </Animated.View>
       </LinearGradient>
 
@@ -117,7 +121,7 @@ export default function StatsScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Stats Grid */}
-        <View style={styles.statsGrid}>
+        <View style={[styles.statsGrid, isRTL && styles.rowRTL]}>
           {stats.map((stat, index) => (
             <StatBox
               key={stat.title}
@@ -134,7 +138,7 @@ export default function StatsScreen() {
           entering={FadeInDown.delay(400).springify()}
           style={styles.section}
         >
-          <Text style={styles.sectionTitle}>تقدم الإنجازات</Text>
+          <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>{t('stats.achievements')}</Text>
           <View style={styles.achievementsCard}>
             {achievements.map((achievement) => (
               <ProgressBar
@@ -152,9 +156,9 @@ export default function StatsScreen() {
           entering={FadeInDown.delay(600).springify()}
           style={styles.section}
         >
-          <Text style={styles.sectionTitle}>ملخص الأسبوع</Text>
+          <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>{t('stats.weeklySummary')}</Text>
           <View style={styles.weeklyCard}>
-            <View style={styles.weeklyRow}>
+            <View style={[styles.weeklyRow, isRTL && styles.rowRTL]}>
               {['الس', 'الأ', 'الث', 'الر', 'الخ', 'الج', 'الس'].map((day, index) => (
                 <View key={index} style={styles.weeklyDay}>
                   <View
@@ -205,6 +209,12 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.85)',
+  },
+  textRTL: {
+    textAlign: 'right',
+  },
+  rowRTL: {
+    flexDirection: 'row-reverse',
   },
   scrollContent: {
     padding: THEME.spacing.md,

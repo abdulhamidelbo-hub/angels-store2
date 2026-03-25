@@ -12,6 +12,9 @@ export interface Azkar {
   category_id: number;
   arabic_text: string;
   transliteration?: string;
+  translation_en?: string;
+  translation_tr?: string;
+  translation_fr?: string;
   repeat_count: number;
   virtue_ar?: string;
   virtue_en?: string;

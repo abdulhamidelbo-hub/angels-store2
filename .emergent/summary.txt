@@ -1,0 +1,151 @@
+<analysis>**original_problem_statement:** 
+The user is building a comprehensive, ad-free Islamic mobile application named Adkar Al Muslim - No Ads 1. 
+**PRODUCT REQUIREMENTS:**
+1. **Core Features**: 14 Categories of Azkar, 15 Islamic Events, 3 Tasbeeh methods (Touch with haptics, Voice, AI Assistant).
+2. **Monetization**: Smart Exemption subscription system (/bin/bash.50/year) via RevenueCat, with a free exemption button.
+3. **Admin Dashboard**: Hidden dashboard accessed via 5-taps on the app logo in settings.
+4. **Massive UI/UX Redesign (COMPLETED)**: Premium design with gradients, shadows, haptic feedback, custom fonts (Cairo/Poppins), and smooth animations.
+5. **NEW MASSIVE REQUIREMENT (IN PROGRESS)**: 
+   - **Global Localization**: Support for 30+ languages using . Must support auto RTL/LTR switching.
+   - **Bilingual Display**: Show Arabic text with translated text directly underneath it. 
+   - **Transliteration**: Add romanized spelling of Arabic words to help non-Arabic speakers pronounce them.
+   - **Audio Playback**: Use  /  to play audio for the Arabic text, Translation, and Virtue of the Azkar.
+   - **Admin Updates**: Add Translation Management and Audio Upload capabilities to the Admin Dashboard.
+
+**User's preferred language**: Arabic (العربية).
+**INSTRUCT NEXT AGENT: You MUST respond to the user exclusively in Arabic.**
+
+**what currently exists?** 
+A full-stack Expo + FastAPI + MongoDB app. The Admin dashboard is built and hidden. The UI/UX was recently completely overhauled and looks premium (verified via screenshots). The agent just started implementing the massive i18n (localization) and Audio playback requests. Basic context files (), translation JSONs, and a  have been created, but they are not fully wired into the UI components yet. The Expo server is currently failing to connect to the Ngrok tunnel.
+
+**Last working item**:
+- **Last item agent was working**: The agent was restarting the Expo Metro bundler after creating the foundational files for Localization (i18n) and Audio Playback (, , ). The Expo server failed to start due to an Ngrok tunnel timeout/error.
+- **Status**: IN PROGRESS / BLOCKED (Environment Issue)
+- **Agent Testing Done**: N
+- **Which testing method agent to use?**: screenshot tool (to verify RTL/LTR and language switching on the UI) and backend testing agent (once DB schema changes are made for translations).
+- **User Testing Done**: N
+
+**All Pending/In progress Issue list**:
+  Issue 1: Expo Ngrok Tunnel Failure (P0)
+   - **Attempted fixes**: Agent tried clearing cache and restarting the expo server multiple times. It currently throws  and .
+   - **Next debug checklist**: Check  for any conflicting packages recently added, ensure no background processes are blocking ports, use troubleshoot_agent if the error persists.
+   - **Why fix this issue and what will be achieved with the fix?**: Blocker for all frontend development and previewing.
+   - **Status**: BLOCKED
+   - **Is recurring issue?**: Y
+   - **Should Test frontend/backend/both after fix?**: Frontend (Screenshot tool).
+   - **Blocked on other issue**: None.
+
+  Issue 2: Stats screen text invisible on Web Preview (P2)
+   - **Attempted fixes**: Agent tried changing  to a standard  with background color.
+   - **Next debug checklist**: . Check text color contrast against the gradient background specifically for web rendering. 
+   - **Why fix this issue and what will be achieved with the fix?**: Ensures cross-platform visual consistency. (Note: Agent verified it looks fine on mobile, just a web preview artifact).
+   - **Status**: PENDING
+   - **Is recurring issue?**: N
+   - **Should Test frontend/backend/both after fix?**: Frontend.
+
+**In progress Task List**:
+  Task 1: Implement Global Localization (i18n) & RTL/LTR (P0)
+   - **Where to resume**: , , and all UI screens.
+   - **What will be achieved with this?**: Fulfills user's request to support 30+ languages.
+   - **Status**: IN PROGRESS. (Foundational files created, but  function needs to be applied to all text in the app).
+   - **Should Test frontend/backend/both after fix?**: Frontend.
+   - **Blocked on something**: Expo Tunnel Issue.
+
+  Task 2: Audio Playback & Transliteration UI (P0)
+   - **Where to resume**:  and .
+   - **What will be achieved with this?**: Allows users to hear Azkar and read pronunciations.
+   - **Status**: IN PROGRESS.
+
+**Upcoming and Future Tasks**
+- **P1**: Update Backend Database Schema for Translations & Audio Files (, ,  tables as requested in Msg 90).
+- **P1**: Update Admin Dashboard UI/API to manage Translations and upload Audio files.
+- **P1**: Integrate actual  and Aladhan API for Prayer Times ().
+- **P1**: Integrate  for Voice Tasbeeh.
+- **P1**: Integrate  (OpenAI GPT-4) for the AI Assistant.
+
+**Completed work in this session**
+- Complete UI/UX Overhaul with Gradients, Animations, and custom components (DONE)
+- Created , ,  (DONE)
+- Applied new design to , , , ,  (DONE)
+- Created foundational files for i18n (, , ) (DONE)
+- Created foundational Audio features (, ) (DONE)
+
+**Earlier issues found/mentioned but not fixed**
+None currently unaddressed. 
+
+**Known issue recurrence from previous fork**
+- **Issue**: Expo Metro Bundler cache / Ngrok tunnel connection issues.
+- **Recurrence count**: 3+
+- **Status**: IN PROGRESS (Currently blocking).
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- **Frontend**: React Native, Expo Router, , ,  (i18n), /.
+- **Backend**: FastAPI, MongoDB (AsyncIOMotorClient).
+
+**key DB schema**
+- Existing: , , , 
+- **Pending Creation (from Msg 90)**: , , .
+
+**changes in tech stack**
+- Added  and  for localization.
+- Added  (and planning ) for audio functionality.
+
+**All files of reference**
+-  (Created: Localization dictionaries)
+-  (Created: Manages RTL/LTR and active language)
+-  (Created: Handles TTS/Audio)
+-  (Created: Reusable premium UI components)
+
+**Areas that need refactoring**
+- All existing screens (e.g., , ) need to be refactored to use the  hook instead of hardcoded Arabic strings.
+
+**key api endpoints**
+- Standard CRUD for Admin. (Will need new endpoints for  and ).
+
+**Critical Info for New Agent**
+- **CRITICAL INSTRUCTION FROM USER**: In Message 90, the user explicitly stated: *لا تسألني أي أسئلة إضافية. قم بتنفيذ جميع التحسينات المذكورة أعلاه الآن* (**Do NOT ask any additional questions. Implement all the mentioned improvements now**). Do not stop to ask for clarification on the i18n or audio features. Just build them.
+- Be careful with the current Ngrok Expo Tunnel error. Use  immediately if a standard server restart or cache clear ([18:32:53] Starting project at /app/frontend) does not fix it.
+- **RTL/LTR**: The app MUST dynamically flip the UI based on the selected language ( flag).
+
+**documents and test reports created in this job**
+- None in this specific run.
+
+**Last 10 User Messages and any pending HUMAN messages**
+- **Msg 89/90**: User provided a massive, highly detailed specification for adding 30+ languages, Audio playback, transliteration, bilingual UI (Arabic + Translation), and Admin Translation Management. User explicitly commanded the agent NOT to ask questions and just start.
+- **Msg 93**: User confirmed to start the implementation immediately (نعم ابداء).
+
+**Project Health Check:**
+- **Broken**: Frontend dev server (Ngrok tunnel timeout error).
+- **Mocked**: AI Chat, Voice Recognition, Prayer Times.
+
+**3rd Party Integrations**
+- RevenueCat (Subscriptions) — requires User API Key.
+- OpenAI GPT-4 — uses Emergent LLM Key (Pending).
+- Aladhan API (Prayer Times) - Free external API (Pending).
+
+**Testing status**
+- Testing agent used after significant changes: NO (UI verified manually via screenshot tool).
+- Troubleshoot agent used after agent stuck in loop: NO (Might be needed for current Ngrok issue).
+- Test files created: None.
+- Known regressions: Expo server connection.
+
+**Credentials to test flow:**
+- Admin dashboard access: Navigate to Settings tab -> Tap the logo 5 times quickly.
+
+**What agent forgot to execute**
+- Agent has not yet updated the FastAPI backend to include the new database tables (, , ) requested by the user in the Message 90 PRD. 
+
+**Debugging checklist for current issue**
+    Issue: Expo server failing to start with Ngrok tunnel error.
+    Frontend files to check:  (check newly added dependencies),  (verify tunnel configs aren't corrupted).
+    Terminal: Run env: load .env
+env: export EXPO_TUNNEL_SUBDOMAIN EXPO_PACKAGER_HOSTNAME EXPO_PUBLIC_BACKEND_URL EXPO_USE_FAST_RESOLVER METRO_CACHE_ROOT
+Starting project at /app/frontend
+Fast resolver is enabled.
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:8081
+Logs for your project will appear below. to clear cache. If it fails 2 more times, invoke  immediately as per system prompts.</analysis>

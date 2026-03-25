@@ -29,6 +29,8 @@ interface CategoryCardProps {
   onPress: () => void;
   delay?: number;
   variant?: 'list' | 'grid';
+  isRTL?: boolean;
+  currentLanguage?: string;
 }
 
 export const CategoryCard: React.FC<CategoryCardProps> = ({
@@ -41,6 +43,8 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
   onPress,
   delay = 0,
   variant = 'list',
+  isRTL = true,
+  currentLanguage = 'ar',
 }) => {
   const opacity = useSharedValue(0);
   const translateX = useSharedValue(variant === 'list' ? 50 : 0);
@@ -86,6 +90,9 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
     isPressed.value = false;
   };
 
+  // Get the display name based on current language
+  const displayName = currentLanguage === 'ar' ? nameAr : (nameEn || nameAr);
+
   if (variant === 'grid') {
     return (
       <Animated.View style={[styles.gridContainer, containerStyle]}>
@@ -99,11 +106,11 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
             <View style={[styles.gridIconContainer, { backgroundColor: color + '15' }]}>
               <Ionicons name={icon} size={32} color={color} />
             </View>
-            <Text style={styles.gridTitle} numberOfLines={2}>
-              {nameAr}
+            <Text style={[styles.gridTitle, isRTL && styles.textRTL]} numberOfLines={2}>
+              {displayName}
             </Text>
             {count !== undefined && (
-              <View style={[styles.countBadge, { backgroundColor: color }]}>
+              <View style={[styles.countBadge, isRTL ? styles.countBadgeRTL : null, { backgroundColor: color }]}>
                 <Text style={styles.countText}>{count}</Text>
               </View>
             )}
@@ -120,33 +127,33 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
       >
-        <View style={styles.listCard}>
+        <View style={[styles.listCard, isRTL && styles.listCardRTL]}>
           {/* Icon Container with Gradient Background */}
           <LinearGradient
             colors={[color + '20', color + '10']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.iconContainer}
+            style={[styles.iconContainer, isRTL && styles.iconContainerRTL]}
           >
             <Ionicons name={icon} size={28} color={color} />
           </LinearGradient>
 
           {/* Content */}
           <View style={styles.content}>
-            <Text style={styles.title}>{nameAr}</Text>
-            {nameEn && <Text style={styles.subtitle}>{nameEn}</Text>}
+            <Text style={[styles.title, isRTL && styles.textRTL]}>{displayName}</Text>
+            {nameEn && currentLanguage !== 'en' && <Text style={[styles.subtitle, isRTL && styles.textRTL]}>{nameEn}</Text>}
           </View>
 
           {/* Count Badge */}
           {count !== undefined && (
-            <View style={[styles.listCountBadge, { backgroundColor: color + '15' }]}>
+            <View style={[styles.listCountBadge, isRTL && styles.listCountBadgeRTL, { backgroundColor: color + '15' }]}>
               <Text style={[styles.listCountText, { color }]}>{count}</Text>
             </View>
           )}
 
           {/* Arrow */}
           <Ionicons
-            name="chevron-forward"
+            name={isRTL ? "chevron-back" : "chevron-forward"}
             size={22}
             color={THEME.colors.textMuted}
           />
@@ -167,6 +174,9 @@ const styles = StyleSheet.create({
     marginBottom: THEME.spacing.sm,
     ...THEME.shadows.small,
   },
+  listCardRTL: {
+    flexDirection: 'row-reverse',
+  },
   iconContainer: {
     width: 56,
     height: 56,
@@ -174,6 +184,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: THEME.spacing.md,
+  },
+  iconContainerRTL: {
+    marginRight: 0,
+    marginLeft: THEME.spacing.md,
   },
   content: {
     flex: 1,
@@ -188,11 +202,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: THEME.colors.textSecondary,
   },
+  textRTL: {
+    textAlign: 'right',
+  },
   listCountBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: THEME.borderRadius.sm,
     marginRight: THEME.spacing.sm,
+  },
+  listCountBadgeRTL: {
+    marginRight: 0,
+    marginLeft: THEME.spacing.sm,
   },
   listCountText: {
     fontSize: 14,
@@ -237,6 +258,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
+  },
+  countBadgeRTL: {
+    right: 'auto',
+    left: 8,
   },
   countText: {
     fontSize: 12,
