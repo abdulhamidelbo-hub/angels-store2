@@ -468,6 +468,10 @@ async def get_subscription_status(user_id: str = "default"):
         
         await db.subscription_info.insert_one(sub)
     
+    # Remove ObjectId for JSON serialization
+    if '_id' in sub:
+        sub['_id'] = str(sub['_id'])
+    
     return sub
 
 @api_router.post("/subscription/exemption")
@@ -531,8 +535,13 @@ async def ai_chat(message: AIMessage):
     
     return {"response": response_text, "timestamp": datetime.utcnow().isoformat()}
 
-# Include router
+# Include routers
 app.include_router(api_router)
+
+# Admin routes
+from admin_routes import admin_router, set_db as set_admin_db
+set_admin_db(db)
+app.include_router(admin_router)
 
 # CORS
 app.add_middleware(

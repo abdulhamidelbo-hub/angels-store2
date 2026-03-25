@@ -24,6 +24,7 @@ export default function RootLayout() {
             <Stack.Screen name="azkar/[id]" />
             <Stack.Screen name="categories/[id]" />
             <Stack.Screen name="events/[id]" />
+            <Stack.Screen name="admin" />
           </Stack>
         </AppProvider>
       </SafeAreaProvider>

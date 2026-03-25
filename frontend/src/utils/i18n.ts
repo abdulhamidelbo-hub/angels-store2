@@ -121,7 +121,14 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: Localization.locale.split('-')[0] || 'ar',
+    lng: (() => {
+      try {
+        const locale = Localization.locale;
+        return locale ? locale.split('-')[0] : 'ar';
+      } catch {
+        return 'ar';
+      }
+    })(),
     fallbackLng: 'ar',
     interpolation: {
       escapeValue: false,

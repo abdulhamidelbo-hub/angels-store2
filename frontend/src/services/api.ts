@@ -92,4 +92,197 @@ export const apiService = {
     const response = await api.post('/ai/chat', { user_message: message });
     return response.data;
   },
+
+  // ============ ADMIN API ============
+
+  // Admin Stats
+  async getAdminStats(): Promise<any> {
+    const response = await api.get('/admin/stats');
+    return response.data;
+  },
+
+  async getAdminCharts(): Promise<any> {
+    const response = await api.get('/admin/stats/charts');
+    return response.data;
+  },
+
+  // Admin Azkar
+  async adminListAzkar(params?: { category_id?: number; search?: string; page?: number }): Promise<any> {
+    const response = await api.get('/admin/azkar', { params });
+    return response.data;
+  },
+
+  async adminCreateAzkar(data: any): Promise<any> {
+    const response = await api.post('/admin/azkar', data);
+    return response.data;
+  },
+
+  async adminUpdateAzkar(id: number, data: any): Promise<any> {
+    const response = await api.put(`/admin/azkar/${id}`, data);
+    return response.data;
+  },
+
+  async adminDeleteAzkar(id: number): Promise<any> {
+    const response = await api.delete(`/admin/azkar/${id}`);
+    return response.data;
+  },
+
+  async adminImportAzkar(data: any): Promise<any> {
+    const response = await api.post('/admin/azkar/import', data);
+    return response.data;
+  },
+
+  async adminExportAzkar(categoryId?: number): Promise<any> {
+    const response = await api.get('/admin/azkar/export', { params: categoryId ? { category_id: categoryId } : {} });
+    return response.data;
+  },
+
+  // Admin Events
+  async adminListEvents(): Promise<any> {
+    const response = await api.get('/admin/events');
+    return response.data;
+  },
+
+  async adminCreateEvent(data: any): Promise<any> {
+    const response = await api.post('/admin/events', data);
+    return response.data;
+  },
+
+  async adminUpdateEvent(id: number, data: any): Promise<any> {
+    const response = await api.put(`/admin/events/${id}`, data);
+    return response.data;
+  },
+
+  async adminDeleteEvent(id: number): Promise<any> {
+    const response = await api.delete(`/admin/events/${id}`);
+    return response.data;
+  },
+
+  async adminGetEventAzkar(eventId: number): Promise<any> {
+    const response = await api.get(`/admin/events/${eventId}/azkar`);
+    return response.data;
+  },
+
+  async adminAddEventAzkar(eventId: number, data: any): Promise<any> {
+    const response = await api.post(`/admin/events/${eventId}/azkar`, data);
+    return response.data;
+  },
+
+  async adminDeleteEventAzkar(eventId: number, azkarId: number): Promise<any> {
+    const response = await api.delete(`/admin/events/${eventId}/azkar/${azkarId}`);
+    return response.data;
+  },
+
+  // Admin Challenges
+  async adminListChallenges(): Promise<any> {
+    const response = await api.get('/admin/challenges');
+    return response.data;
+  },
+
+  async adminCreateChallenge(data: any): Promise<any> {
+    const response = await api.post('/admin/challenges', data);
+    return response.data;
+  },
+
+  async adminUpdateChallenge(id: number, data: any): Promise<any> {
+    const response = await api.put(`/admin/challenges/${id}`, data);
+    return response.data;
+  },
+
+  async adminDeleteChallenge(id: number): Promise<any> {
+    const response = await api.delete(`/admin/challenges/${id}`);
+    return response.data;
+  },
+
+  // Admin Users
+  async adminListUsers(params?: { search?: string; status?: string; page?: number }): Promise<any> {
+    const response = await api.get('/admin/users', { params });
+    return response.data;
+  },
+
+  async adminGetUser(userId: string): Promise<any> {
+    const response = await api.get(`/admin/users/${userId}`);
+    return response.data;
+  },
+
+  async adminUpdateUserSubscription(userId: string, data: any): Promise<any> {
+    const response = await api.put(`/admin/users/${userId}/subscription`, data);
+    return response.data;
+  },
+
+  async adminBanUser(userId: string, data: any): Promise<any> {
+    const response = await api.put(`/admin/users/${userId}/ban`, data);
+    return response.data;
+  },
+
+  // Admin Exemptions
+  async adminListExemptions(params?: { status?: string; page?: number }): Promise<any> {
+    const response = await api.get('/admin/exemptions', { params });
+    return response.data;
+  },
+
+  async adminProcessExemption(id: string, data: any): Promise<any> {
+    const response = await api.put(`/admin/exemptions/${id}`, data);
+    return response.data;
+  },
+
+  async adminExemptionStats(): Promise<any> {
+    const response = await api.get('/admin/exemptions/stats');
+    return response.data;
+  },
+
+  // Admin Notifications
+  async adminSendNotification(data: any): Promise<any> {
+    const response = await api.post('/admin/notifications/send', data);
+    return response.data;
+  },
+
+  async adminListNotifications(page?: number): Promise<any> {
+    const response = await api.get('/admin/notifications', { params: { page } });
+    return response.data;
+  },
+
+  async adminGetNotificationSettings(): Promise<any> {
+    const response = await api.get('/admin/notifications/auto-settings');
+    return response.data;
+  },
+
+  async adminUpdateNotificationSettings(data: any): Promise<any> {
+    const response = await api.put('/admin/notifications/auto-settings', data);
+    return response.data;
+  },
+
+  // Admin Settings
+  async adminGetSettings(): Promise<any> {
+    const response = await api.get('/admin/settings');
+    return response.data;
+  },
+
+  async adminUpdateSettings(data: any): Promise<any> {
+    const response = await api.put('/admin/settings', data);
+    return response.data;
+  },
+
+  // Admin Backup
+  async adminBackup(): Promise<any> {
+    const response = await api.get('/admin/backup');
+    return response.data;
+  },
+
+  async adminRestore(data: any): Promise<any> {
+    const response = await api.post('/admin/backup/restore', data);
+    return response.data;
+  },
+
+  // Admin Logs
+  async adminGetLogs(page?: number): Promise<any> {
+    const response = await api.get('/admin/logs', { params: { page } });
+    return response.data;
+  },
+
+  // Admin Categories
+  async adminListCategories(): Promise<any> {
+    const response = await api.get('/admin/categories');
+    return response.data;
+  },
 };

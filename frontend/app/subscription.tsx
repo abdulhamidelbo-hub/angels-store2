@@ -125,7 +125,7 @@ export default function SubscriptionScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name=\"arrow-back\" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>الاشتراك</Text>
         <View style={{ width: 40 }} />
@@ -165,7 +165,7 @@ export default function SubscriptionScreen() {
             'بدون إعلانات مزعجة نهائياً',
           ].map((feature, index) => (
             <View key={index} style={styles.featureItem}>
-              <Ionicons name=\"checkmark-circle\" size={20} color={COLORS.primary} />
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
               <Text style={styles.featureText}>{feature}</Text>
             </View>
           ))}
@@ -185,7 +185,7 @@ export default function SubscriptionScreen() {
                   <Text style={styles.subscribeTitle}>اشترك الآن</Text>
                   <Text style={styles.subscribePrice}>نصف دولار لمدة سنة كاملة</Text>
                 </View>
-                <Ionicons name=\"card\" size={32} color=\"#FFFFFF\" />
+                <Ionicons name="card" size={32} color="#FFFFFF" />
               </View>
             </TouchableOpacity>
 
@@ -197,7 +197,7 @@ export default function SubscriptionScreen() {
                 activeOpacity={0.8}
               >
                 <View style={styles.exemptionHeader}>
-                  <Ionicons name=\"star\" size={24} color=\"#FFD700\" />
+                  <Ionicons name="star" size={24} color="#FFD700" />
                   <Text style={styles.exemptionBadge}>الميزة الخاصة</Text>
                 </View>
                 <Text style={styles.exemptionTitle}>
@@ -208,7 +208,7 @@ export default function SubscriptionScreen() {
                   وسأشترك السنة القادمة إن شاء الله
                 </Text>
                 <View style={styles.exemptionFooter}>
-                  <Ionicons name=\"heart\" size={20} color=\"#FFD700\" />
+                  <Ionicons name="heart" size={20} color="#FFD700" />
                   <Text style={styles.exemptionNote}>
                     اضغط هنا للحصول على سنة مجانية
                   </Text>
@@ -218,7 +218,7 @@ export default function SubscriptionScreen() {
 
             {subscription?.exemption_used && (
               <View style={styles.exemptionUsedCard}>
-                <Ionicons name=\"checkmark-circle\" size={32} color={COLORS.success} />
+                <Ionicons name="checkmark-circle" size={32} color={COLORS.success} />
                 <Text style={styles.exemptionUsedText}>
                   تم استخدام ميزة الإعفاء{`\n`}
                   جزاك الله خيراً على دعائك
@@ -230,7 +230,7 @@ export default function SubscriptionScreen() {
 
         {/* Info */}
         <View style={styles.infoCard}>
-          <Ionicons name=\"information-circle\" size={24} color={COLORS.primary} />
+          <Ionicons name="information-circle" size={24} color={COLORS.primary} />
           <Text style={styles.infoText}>
             جميع الأموال المستلمة تُستخدم في تطوير التطبيق وإضافة مزايا جديدة.
             نسأل الله أن يتقبل هذا العمل ويجعله خالصاً لوجهه الكريم.

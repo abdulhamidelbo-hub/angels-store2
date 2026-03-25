@@ -1,11 +1,39 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Card } from '../../src/components/Common';
 import { COLORS } from '../../src/constants/colors';
 
 export default function SettingsScreen() {
+  const router = useRouter();
+  const pressCountRef = useRef(0);
+  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleLogoPress = useCallback(() => {
+    pressCountRef.current += 1;
+
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+    }
+
+    pressTimerRef.current = setTimeout(() => {
+      pressCountRef.current = 0;
+    }, 2000);
+
+    if (pressCountRef.current >= 5) {
+      pressCountRef.current = 0;
+      if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+      Alert.alert(
+        'مرحباً أيها المالك',
+        'جاري فتح لوحة التحكم...',
+        [{ text: 'دخول', onPress: () => router.push('/admin') }],
+        { cancelable: false }
+      );
+    }
+  }, [router]);
+
   const settingsSections = [
     {
       title: 'عام',
@@ -79,11 +107,16 @@ export default function SettingsScreen() {
           </View>
         ))}
 
-        {/* Version Info */}
-        <View style={styles.version}>
+        {/* Version Info - Tap logo 5 times to access Admin */}
+        <TouchableOpacity
+          style={styles.version}
+          onPress={handleLogoPress}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="leaf" size={40} color={COLORS.primary} />
           <Text style={styles.versionText}>نسخة 1.0.0</Text>
           <Text style={styles.versionSubtext}>أذكار المسلم - بدون إعلانات</Text>
-        </View>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
