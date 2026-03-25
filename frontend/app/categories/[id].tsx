@@ -121,7 +121,7 @@ const AzkarCard: React.FC<AzkarCardProps> = ({
 
   const handlePress = () => {
     Haptics.selectionAsync();
-    router.push(`/azkar/${item.id}`);
+    router.push(`/azkar/${item.id}` as any);
   };
 
   return (
@@ -129,25 +129,15 @@ const AzkarCard: React.FC<AzkarCardProps> = ({
       entering={FadeInDown.delay(index * 80).springify()}
       style={containerStyle}
     >
-      <Pressable
-        onPress={handlePress}
-        onPressIn={() => { isPressed.value = true; }}
-        onPressOut={() => { isPressed.value = false; }}
-        disabled={isCompleted}
-      >
-        <LinearGradient
-          colors={getCardBackground()}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[
-            styles.azkarCard,
-            isCompleted && styles.completedCard,
-            isCurrentListening && styles.listeningCard,
-          ]}
-        >
-          {/* Header with repeat count and actions */}
-          <View style={[styles.cardHeader, isRTL && styles.rowRTL]}>
-            {/* Repeat Badge */}
+      <View style={[
+        styles.azkarCard,
+        isCompleted && styles.completedCard,
+        isCurrentListening && styles.listeningCard,
+        { backgroundColor: isCompleted ? '#FFD70030' : THEME.colors.surface }
+      ]}>
+        {/* Header with repeat count and actions */}
+        <View style={[styles.cardHeader, isRTL && styles.rowRTL]}>
+          {/* Repeat Badge */}
             <LinearGradient
               colors={isCompleted ? ['#FFF', '#FFF'] : THEME.gradients.gold}
               start={{ x: 0, y: 0 }}
@@ -298,8 +288,19 @@ const AzkarCard: React.FC<AzkarCardProps> = ({
               <Text style={styles.completedBadgeText}>{t('azkar.completed')}</Text>
             </View>
           )}
-        </LinearGradient>
-      </Pressable>
+
+          {/* View Details Button */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.viewDetailsButton,
+              pressed && styles.viewDetailsButtonPressed,
+            ]}
+            onPress={handlePress}
+          >
+            <Text style={styles.viewDetailsText}>{t('common.next')}</Text>
+            <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={18} color={THEME.colors.primary} />
+          </Pressable>
+        </View>
     </Animated.View>
   );
 };
@@ -1037,5 +1038,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  viewDetailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: THEME.spacing.md,
+    marginTop: THEME.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.border,
+    gap: 6,
+  },
+  viewDetailsButtonPressed: {
+    opacity: 0.7,
+    backgroundColor: THEME.colors.primary + '10',
+  },
+  viewDetailsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.primary,
   },
 });

@@ -537,6 +537,7 @@ async def get_azkar_detail(azkar_id: int):
     azkar = await db.azkar.find_one({"id": azkar_id})
     if not azkar:
         raise HTTPException(status_code=404, detail="Azkar not found")
+    azkar['_id'] = str(azkar['_id'])
     return azkar
 
 @api_router.post("/azkar/favorite/{azkar_id}")
@@ -610,8 +611,13 @@ async def get_today_stats():
             "touch_tasbeeh_count": 0,
             "ai_tasbeeh_count": 0,
             "completed_azkar_count": 0,
-            "xp_earned": 0
+            "xp_earned": 0,
+            "streak_days": 0
         }
+    
+    # Convert ObjectId to string
+    if '_id' in stats:
+        stats['_id'] = str(stats['_id'])
     
     return stats
 
