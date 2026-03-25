@@ -1,0 +1,41 @@
+export const COLORS = {
+  primary: '#4A8B6F',
+  secondary: '#5A4A8B',
+  accent: '#8B6A4A',
+  background: '#F5F5F5',
+  backgroundDark: '#1A1A1A',
+  card: '#FFFFFF',
+  cardDark: '#2A2A2A',
+  text: '#333333',
+  textDark: '#E5E5E5',
+  textSecondary: '#666666',
+  border: '#E0E0E0',
+  success: '#4CAF50',
+  warning: '#FFC107',
+  error: '#F44336',
+  info: '#2196F3',
+  
+  // Category colors
+  morning: '#4A8B6F',
+  evening: '#5A4A8B',
+  prayer: '#8B6A4A',
+  sleep: '#4A6A8B',
+  wakeup: '#8B4A6A',
+  food: '#6A8B4A',
+  home: '#4A8B8B',
+  restroom: '#8B8B4A',
+  ablution: '#4A8B5A',
+  adhan: '#5A8B4A',
+  mosque: '#8B5A4A',
+  tasbeeh: '#4A5A8B',
+  dua: '#6A4A8B',
+  istighfar: '#8B4A5A',
+};
+
+export const GRADIENTS = {
+  primary: ['#4A8B6F', '#357A5A'],
+  secondary: ['#5A4A8B', '#453A6F'],
+  sunrise: ['#FF6B6B', '#FFE66D'],
+  sunset: ['#4ECDC4', '#556270'],
+  night: ['#2C3E50', '#3498DB'],
+};
