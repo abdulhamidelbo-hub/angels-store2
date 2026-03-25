@@ -84,7 +84,14 @@
     "detail": "تفاصيل الذكر",
     "counter": "العداد",
     "count": "تسبيح",
-    "reset": "إعادة"
+    "reset": "إعادة",
+    "touch": "باللمس",
+    "voice": "بالصوت",
+    "stop": "إيقاف",
+    "listening": "يستمع...",
+    "stopListening": "إيقاف الاستماع",
+    "resetsIn": "يعود خلال",
+    "completedSuccess": "تم الإكمال بنجاح"
   },
   "events": {
     "title": "المناسبات الدينية",

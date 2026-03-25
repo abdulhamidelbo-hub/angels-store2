@@ -1154,6 +1154,290 @@ async def add_audio_file(audio: AudioFile):
     result = await db.audio_files.insert_one(audio_dict)
     return {"success": True, "id": str(result.inserted_id)}
 
+@api_router.post("/admin/seed-real-azkar")
+async def seed_real_azkar():
+    """Seed database with real azkar texts for all categories"""
+    
+    # أذكار الصباح الحقيقية
+    morning_azkar = [
+        {
+            "id": 1, "category_id": 1,
+            "arabic_text": "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ",
+            "transliteration": "Asbahna wa asbahal mulku lillah, walhamdu lillah, la ilaha illallahu wahdahu la shareeka lah, lahul mulku wa lahul hamdu wa huwa ala kulli shay'in qadeer",
+            "translation_en": "We have reached the morning and at this very time the whole kingdom belongs to Allah. Praise is to Allah. None has the right to be worshipped except Allah alone without partner, to Him belongs all sovereignty and praise and He is over all things omnipotent.",
+            "repeat_count": 1,
+            "virtue_ar": "من قالها حين يصبح فقد أدى شكر يومه",
+            "virtue_en": "Whoever says this in the morning has fulfilled his thanks for the day",
+            "reference_ar": "رواه أبو داود",
+            "reference_en": "Narrated by Abu Dawud"
+        },
+        {
+            "id": 2, "category_id": 1,
+            "arabic_text": "اللَّهُمَّ بِكَ أَصْبَحْنَا، وَبِكَ أَمْسَيْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ النُّشُورُ",
+            "transliteration": "Allahumma bika asbahna, wa bika amsayna, wa bika nahya, wa bika namootu, wa ilaykan nushoor",
+            "translation_en": "O Allah, by Your leave we have reached the morning and by Your leave we have reached the evening, by Your leave we live and die and unto You is our resurrection.",
+            "repeat_count": 1,
+            "virtue_ar": "من الأذكار المشروعة في الصباح",
+            "virtue_en": "From the prescribed morning supplications",
+            "reference_ar": "رواه الترمذي",
+            "reference_en": "Narrated by At-Tirmidhi"
+        },
+        {
+            "id": 3, "category_id": 1,
+            "arabic_text": "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+            "transliteration": "Subhan Allahi wa bihamdih",
+            "translation_en": "Glory be to Allah and His is the praise",
+            "repeat_count": 100,
+            "virtue_ar": "من قالها حين يصبح وحين يمسي مائة مرة لم يأت أحد يوم القيامة بأفضل مما جاء به",
+            "virtue_en": "Whoever says it 100 times morning and evening, no one will come on Judgment Day with anything better",
+            "reference_ar": "رواه مسلم",
+            "reference_en": "Narrated by Muslim"
+        },
+        {
+            "id": 4, "category_id": 1,
+            "arabic_text": "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ",
+            "transliteration": "La ilaha illallahu wahdahu la shareeka lah, lahul mulku wa lahul hamdu wa huwa ala kulli shay'in qadeer",
+            "translation_en": "None has the right to be worshipped except Allah, alone without partner. To Him belongs all sovereignty and praise and He is over all things omnipotent.",
+            "repeat_count": 10,
+            "virtue_ar": "من قالها عشر مرات كان كمن أعتق أربعة أنفس من ولد إسماعيل",
+            "virtue_en": "Whoever says it ten times will be like one who freed four souls from the descendants of Ismail",
+            "reference_ar": "رواه البخاري ومسلم",
+            "reference_en": "Narrated by Al-Bukhari and Muslim"
+        },
+        {
+            "id": 5, "category_id": 1,
+            "arabic_text": "اللَّهُمَّ إِنِّي أَصْبَحْتُ أُشْهِدُكَ، وَأُشْهِدُ حَمَلَةَ عَرْشِكَ، وَمَلَائِكَتَكَ، وَجَمِيعَ خَلْقِكَ، أَنَّكَ أَنْتَ اللَّهُ لَا إِلَهَ إِلَّا أَنْتَ وَحْدَكَ لَا شَرِيكَ لَكَ، وَأَنَّ مُحَمَّدًا عَبْدُكَ وَرَسُولُكَ",
+            "transliteration": "Allahumma inni asbahtu ush-hiduka, wa ush-hidu hamalata arshik, wa mala'ikatak, wa jami'a khalqik, annaka antallahu la ilaha illa anta wahdaka la shareeka lak, wa anna Muhammadan abduka wa rasooluk",
+            "translation_en": "O Allah, verily I have reached the morning and call on You, the bearers of Your throne, Your angels, and all of Your creation to witness that You are Allah, none has the right to be worshipped except You, alone, without partner and that Muhammad is Your servant and Messenger.",
+            "repeat_count": 4,
+            "virtue_ar": "من قالها أربع مرات أعتقه الله من النار",
+            "virtue_en": "Whoever says it four times, Allah will free him from the Fire",
+            "reference_ar": "رواه أبو داود",
+            "reference_en": "Narrated by Abu Dawud"
+        },
+        {
+            "id": 6, "category_id": 1,
+            "arabic_text": "اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لَا إِلَهَ إِلَّا أَنْتَ",
+            "transliteration": "Allahumma aafini fi badani, Allahumma aafini fi sam'i, Allahumma aafini fi basari, la ilaha illa anta",
+            "translation_en": "O Allah, grant my body health, O Allah, grant my hearing health, O Allah, grant my sight health. None has the right to be worshipped except You.",
+            "repeat_count": 3,
+            "virtue_ar": "دعاء للعافية",
+            "virtue_en": "Supplication for well-being",
+            "reference_ar": "رواه أبو داود",
+            "reference_en": "Narrated by Abu Dawud"
+        },
+        {
+            "id": 7, "category_id": 1,
+            "arabic_text": "اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْكُفْرِ، وَالْفَقْرِ، وَأَعُوذُ بِكَ مِنْ عَذَابِ الْقَبْرِ، لَا إِلَهَ إِلَّا أَنْتَ",
+            "transliteration": "Allahumma inni a'udhu bika minal kufr, wal faqr, wa a'udhu bika min adhabil qabr, la ilaha illa anta",
+            "translation_en": "O Allah, I seek refuge in You from disbelief, poverty, and I seek refuge in You from the punishment of the grave. None has the right to be worshipped except You.",
+            "repeat_count": 3,
+            "virtue_ar": "الاستعاذة من الكفر والفقر وعذاب القبر",
+            "virtue_en": "Seeking refuge from disbelief, poverty and grave punishment",
+            "reference_ar": "رواه أبو داود",
+            "reference_en": "Narrated by Abu Dawud"
+        },
+        {
+            "id": 8, "category_id": 1,
+            "arabic_text": "حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ",
+            "transliteration": "Hasbiyal lahu la ilaha illa huwa alayhi tawakkaltu wa huwa rabbul arshil adheem",
+            "translation_en": "Allah is sufficient for me, none has the right to be worshipped except Him, upon Him I rely and He is Lord of the exalted throne.",
+            "repeat_count": 7,
+            "virtue_ar": "من قالها حين يصبح وحين يمسي سبع مرات كفاه الله ما أهمه من أمر الدنيا والآخرة",
+            "virtue_en": "Whoever says it seven times morning and evening, Allah will suffice him in all matters of this world and the hereafter",
+            "reference_ar": "رواه ابن السني",
+            "reference_en": "Narrated by Ibn As-Sunni"
+        },
+        {
+            "id": 9, "category_id": 1,
+            "arabic_text": "بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ",
+            "transliteration": "Bismillahil ladhi la yadurru ma'asmihi shay'un fil ardi wa la fis sama'i wa huwas sami'ul aleem",
+            "translation_en": "In the name of Allah with whose name nothing is harmed on earth nor in the heavens and He is The All-Hearing, The All-Knowing.",
+            "repeat_count": 3,
+            "virtue_ar": "من قالها ثلاث مرات لم تصبه فجأة بلاء حتى يمسي",
+            "virtue_en": "Whoever says it three times will not be afflicted by sudden calamity until evening",
+            "reference_ar": "رواه أبو داود والترمذي",
+            "reference_en": "Narrated by Abu Dawud and At-Tirmidhi"
+        },
+        {
+            "id": 10, "category_id": 1,
+            "arabic_text": "رَضِيتُ بِاللَّهِ رَبًّا، وَبِالْإِسْلَامِ دِينًا، وَبِمُحَمَّدٍ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ نَبِيًّا",
+            "transliteration": "Raditu billahi rabba, wa bil islami deena, wa bi Muhammadin sallallahu alayhi wa sallama nabiyya",
+            "translation_en": "I am pleased with Allah as a Lord, Islam as a religion and Muhammad peace be upon him as a Prophet.",
+            "repeat_count": 3,
+            "virtue_ar": "من قالها حين يصبح وحين يمسي كان حقاً على الله أن يرضيه يوم القيامة",
+            "virtue_en": "Whoever says it morning and evening, it is a right upon Allah to please him on the Day of Resurrection",
+            "reference_ar": "رواه أحمد",
+            "reference_en": "Narrated by Ahmad"
+        },
+    ]
+    
+    # أذكار المساء
+    evening_azkar = [
+        {
+            "id": 21, "category_id": 2,
+            "arabic_text": "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ",
+            "transliteration": "Amsayna wa amsal mulku lillah, walhamdu lillah, la ilaha illallahu wahdahu la shareeka lah, lahul mulku wa lahul hamdu wa huwa ala kulli shay'in qadeer",
+            "translation_en": "We have reached the evening and at this very time the whole kingdom belongs to Allah. All praise is due to Allah.",
+            "repeat_count": 1,
+            "virtue_ar": "من قالها حين يمسي فقد أدى شكر ليلته",
+            "virtue_en": "Whoever says it in the evening has fulfilled thanks for that night",
+            "reference_ar": "رواه أبو داود",
+            "reference_en": "Narrated by Abu Dawud"
+        },
+        {
+            "id": 22, "category_id": 2,
+            "arabic_text": "اللَّهُمَّ بِكَ أَمْسَيْنَا، وَبِكَ أَصْبَحْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ الْمَصِيرُ",
+            "transliteration": "Allahumma bika amsayna, wa bika asbahna, wa bika nahya, wa bika namootu, wa ilaykal maseer",
+            "translation_en": "O Allah, by Your leave we have reached the evening, by Your leave we have reached the morning, by Your leave we live and die and unto You is our return.",
+            "repeat_count": 1,
+            "virtue_ar": "من الأذكار المشروعة في المساء",
+            "virtue_en": "From the prescribed evening supplications",
+            "reference_ar": "رواه الترمذي",
+            "reference_en": "Narrated by At-Tirmidhi"
+        },
+        {
+            "id": 23, "category_id": 2,
+            "arabic_text": "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+            "transliteration": "Subhan Allahi wa bihamdih",
+            "translation_en": "Glory be to Allah and His is the praise",
+            "repeat_count": 100,
+            "virtue_ar": "من قالها مائة مرة حطت خطاياه وإن كانت مثل زبد البحر",
+            "virtue_en": "Whoever says it 100 times, his sins will be forgiven even if they were like the foam of the sea",
+            "reference_ar": "رواه مسلم",
+            "reference_en": "Narrated by Muslim"
+        },
+    ]
+    
+    # التسبيحات العامة (تحديث)
+    general_tasbeeh = [
+        {
+            "id": 100, "category_id": 12,
+            "arabic_text": "سُبْحَانَ اللَّهِ",
+            "transliteration": "Subhan Allah",
+            "translation_en": "Glory be to Allah",
+            "repeat_count": 33,
+            "virtue_ar": "من قالها دبر كل صلاة غفرت خطاياه",
+            "virtue_en": "Whoever says it after every prayer will have his sins forgiven",
+            "reference_ar": "رواه مسلم",
+            "reference_en": "Narrated by Muslim"
+        },
+        {
+            "id": 101, "category_id": 12,
+            "arabic_text": "الْحَمْدُ لِلَّهِ",
+            "transliteration": "Alhamdulillah",
+            "translation_en": "Praise be to Allah",
+            "repeat_count": 33,
+            "virtue_ar": "تملأ الميزان",
+            "virtue_en": "It fills the scale",
+            "reference_ar": "رواه مسلم",
+            "reference_en": "Narrated by Muslim"
+        },
+        {
+            "id": 102, "category_id": 12,
+            "arabic_text": "اللَّهُ أَكْبَرُ",
+            "transliteration": "Allahu Akbar",
+            "translation_en": "Allah is the Greatest",
+            "repeat_count": 34,
+            "virtue_ar": "من قالها دبر كل صلاة غفرت خطاياه",
+            "virtue_en": "Whoever says it after every prayer will have his sins forgiven",
+            "reference_ar": "رواه مسلم",
+            "reference_en": "Narrated by Muslim"
+        },
+        {
+            "id": 103, "category_id": 12,
+            "arabic_text": "لَا إِلَٰهَ إِلَّا اللَّهُ",
+            "transliteration": "La ilaha illallah",
+            "translation_en": "There is no god but Allah",
+            "repeat_count": 100,
+            "virtue_ar": "أفضل ما قلت أنا والنبيون من قبلي",
+            "virtue_en": "The best that I and the prophets before me have said",
+            "reference_ar": "رواه الترمذي",
+            "reference_en": "Narrated by At-Tirmidhi"
+        },
+        {
+            "id": 104, "category_id": 12,
+            "arabic_text": "أَسْتَغْفِرُ اللَّهَ",
+            "transliteration": "Astaghfirullah",
+            "translation_en": "I seek forgiveness from Allah",
+            "repeat_count": 100,
+            "virtue_ar": "من لزم الاستغفار جعل الله له من كل ضيق مخرجاً",
+            "virtue_en": "Whoever maintains seeking forgiveness, Allah will make a way out from every difficulty",
+            "reference_ar": "رواه أبو داود",
+            "reference_en": "Narrated by Abu Dawud"
+        },
+        {
+            "id": 105, "category_id": 12,
+            "arabic_text": "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ",
+            "transliteration": "La hawla wa la quwwata illa billah",
+            "translation_en": "There is no might nor power except with Allah",
+            "repeat_count": 100,
+            "virtue_ar": "كنز من كنوز الجنة",
+            "virtue_en": "A treasure from the treasures of Paradise",
+            "reference_ar": "رواه البخاري ومسلم",
+            "reference_en": "Narrated by Al-Bukhari and Muslim"
+        },
+        {
+            "id": 106, "category_id": 12,
+            "arabic_text": "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، سُبْحَانَ اللَّهِ الْعَظِيمِ",
+            "transliteration": "Subhan Allahi wa bihamdih, Subhan Allahil Adheem",
+            "translation_en": "Glory be to Allah and His is the praise, Glory be to Allah the Magnificent",
+            "repeat_count": 100,
+            "virtue_ar": "كلمتان خفيفتان على اللسان، ثقيلتان في الميزان، حبيبتان إلى الرحمن",
+            "virtue_en": "Two phrases light on the tongue, heavy in the scales, beloved to the Most Merciful",
+            "reference_ar": "رواه البخاري ومسلم",
+            "reference_en": "Narrated by Al-Bukhari and Muslim"
+        },
+        {
+            "id": 107, "category_id": 12,
+            "arabic_text": "اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ",
+            "transliteration": "Allahumma salli wa sallim ala nabiyyina Muhammad",
+            "translation_en": "O Allah, send prayers and peace upon our Prophet Muhammad",
+            "repeat_count": 10,
+            "virtue_ar": "من صلى عليّ صلاة صلى الله عليه بها عشراً",
+            "virtue_en": "Whoever sends one prayer upon me, Allah will send ten upon him",
+            "reference_ar": "رواه مسلم",
+            "reference_en": "Narrated by Muslim"
+        },
+    ]
+    
+    # سيد الاستغفار
+    istighfar = [
+        {
+            "id": 120, "category_id": 14,
+            "arabic_text": "اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ، أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ، وَأَبُوءُ بِذَنْبِي فَاغْفِرْ لِي فَإِنَّهُ لَا يَغْفِرُ الذُّنُوبَ إِلَّا أَنْتَ",
+            "transliteration": "Allahumma anta Rabbi la ilaha illa anta, khalaqtani wa ana abduk, wa ana ala ahdika wa wa'dika mastata't, a'udhu bika min sharri ma sana't, abu'u laka bini'matika alayya, wa abu'u bidhunbi faghfir li fa innahu la yaghfirudh dhunuba illa anta",
+            "translation_en": "O Allah, You are my Lord, there is no god but You. You created me and I am Your servant, I am faithful to my covenant and promise to You as much as I am able. I seek refuge in You from the evil of what I have done. I acknowledge before You all Your blessings upon me, and I confess to You my sins. So forgive me, for none forgives sins but You.",
+            "repeat_count": 1,
+            "virtue_ar": "من قالها من النهار موقنًا بها فمات من يومه قبل أن يمسي فهو من أهل الجنة",
+            "virtue_en": "Whoever says it with conviction during the day and dies before evening will be among the people of Paradise",
+            "reference_ar": "رواه البخاري",
+            "reference_en": "Narrated by Al-Bukhari"
+        },
+    ]
+    
+    # حذف الأذكار القديمة وإدراج الجديدة
+    all_azkar = morning_azkar + evening_azkar + general_tasbeeh + istighfar
+    
+    for azkar in all_azkar:
+        azkar['is_favorite'] = False
+        await db.azkar.update_one(
+            {"id": azkar["id"]},
+            {"$set": azkar},
+            upsert=True
+        )
+    
+    # تحديث عدد الأذكار في التصنيفات
+    categories_counts = {1: 10, 2: 3, 12: 8, 14: 1}
+    for cat_id, count in categories_counts.items():
+        await db.categories.update_one(
+            {"id": cat_id},
+            {"$set": {"azkar_count": count}}
+        )
+    
+    return {"success": True, "message": f"Added/Updated {len(all_azkar)} real azkar with proper texts"}
+
+
 @api_router.post("/admin/seed-transliterations")
 async def seed_transliterations():
     """Add transliterations to existing azkar"""

@@ -84,7 +84,14 @@
     "detail": "Adhkar Detail",
     "counter": "Counter",
     "count": "Count",
-    "reset": "Reset"
+    "reset": "Reset",
+    "touch": "Touch",
+    "voice": "Voice",
+    "stop": "Stop",
+    "listening": "Listening...",
+    "stopListening": "Stop Listening",
+    "resetsIn": "Resets in",
+    "completedSuccess": "Completed successfully"
   },
   "events": {
     "title": "Islamic Events",

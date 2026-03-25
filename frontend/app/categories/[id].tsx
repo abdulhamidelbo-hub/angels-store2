@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   RefreshControl,
   StatusBar,
   Pressable,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,189 +16,392 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withTiming,
-  withDelay,
   withSpring,
+  withTiming,
+  withRepeat,
   withSequence,
   Easing,
   FadeInDown,
+  FadeIn,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { THEME } from '../../src/constants/theme';
 import { useLanguage } from '../../src/contexts/LanguageContext';
 import { apiService } from '../../src/services/api';
 import { Azkar } from '../../src/types';
 import { ListenButton } from '../../src/components/ui';
+import { useApp } from '../../src/contexts/AppContext';
 
+// Constants
+const RESET_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
+const PROGRESS_STORAGE_KEY = '@azkar_progress';
+
+interface AzkarProgress {
+  azkarId: number;
+  count: number;
+  isCompleted: boolean;
+  completedAt: number | null;
+}
+
+// ============================================================
+// AZKAR CARD COMPONENT
+// ============================================================
 interface AzkarCardProps {
   item: Azkar;
   index: number;
-  onPress: () => void;
-  onFavorite: () => void;
+  progress: AzkarProgress | null;
+  onTouchCount: () => void;
+  onVoiceCount: () => void;
+  isListening: boolean;
+  isCurrentListening: boolean;
   isRTL: boolean;
   currentLanguage: string;
   t: (key: string) => string;
+  getRemainingTime: (completedAt: number) => string;
 }
 
-const AzkarCard: React.FC<AzkarCardProps> = ({ item, index, onPress, onFavorite, isRTL, currentLanguage, t }) => {
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(30);
+const AzkarCard: React.FC<AzkarCardProps> = ({
+  item,
+  index,
+  progress,
+  onTouchCount,
+  onVoiceCount,
+  isListening,
+  isCurrentListening,
+  isRTL,
+  currentLanguage,
+  t,
+  getRemainingTime,
+}) => {
+  const router = useRouter();
   const isPressed = useSharedValue(false);
-  const heartScale = useSharedValue(1);
+  const pulseValue = useSharedValue(1);
 
+  const currentCount = progress?.count || 0;
+  const isCompleted = progress?.isCompleted || false;
+  const completedAt = progress?.completedAt || null;
+  const progressPercent = item.repeat_count > 0 ? (currentCount / item.repeat_count) * 100 : 0;
+
+  // Pulse animation for listening state
   useEffect(() => {
-    opacity.value = withDelay(
-      index * 80,
-      withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) })
-    );
-    translateY.value = withDelay(
-      index * 80,
-      withSpring(0, { damping: 15, stiffness: 80 })
-    );
-  }, []);
+    if (isCurrentListening) {
+      pulseValue.value = withRepeat(
+        withSequence(
+          withTiming(1.05, { duration: 500 }),
+          withTiming(1, { duration: 500 })
+        ),
+        -1,
+        true
+      );
+    } else {
+      pulseValue.value = withTiming(1, { duration: 200 });
+    }
+  }, [isCurrentListening]);
 
   const containerStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
     transform: [
-      { translateY: translateY.value },
-      {
-        scale: withSpring(isPressed.value ? 0.98 : 1, {
-          damping: 15,
-          stiffness: 200,
-        }),
-      },
+      { scale: isPressed.value ? withSpring(0.98) : withSpring(1) },
     ],
+    opacity: withTiming(1, { duration: 300 }),
   }));
 
-  const heartStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: heartScale.value }],
+  const listeningStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseValue.value }],
   }));
 
-  const handleFavorite = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    heartScale.value = withSequence(
-      withTiming(1.3, { duration: 150 }),
-      withSpring(1, { damping: 10, stiffness: 200 })
-    );
-    onFavorite();
+  // Card background color based on completion status
+  const getCardBackground = () => {
+    if (isCompleted) {
+      return ['#FFD700', '#FFA500']; // Gold gradient for completed
+    }
+    return [THEME.colors.surface, THEME.colors.surface];
+  };
+
+  const handlePress = () => {
+    Haptics.selectionAsync();
+    router.push(`/azkar/${item.id}`);
   };
 
   return (
-    <Animated.View style={containerStyle}>
+    <Animated.View
+      entering={FadeInDown.delay(index * 80).springify()}
+      style={containerStyle}
+    >
       <Pressable
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          onPress();
-        }}
-        onPressIn={() => {
-          isPressed.value = true;
-          Haptics.selectionAsync();
-        }}
-        onPressOut={() => {
-          isPressed.value = false;
-        }}
+        onPress={handlePress}
+        onPressIn={() => { isPressed.value = true; }}
+        onPressOut={() => { isPressed.value = false; }}
+        disabled={isCompleted}
       >
-        <View style={styles.azkarCard}>
-          {/* Header */}
-          <View style={[styles.azkarHeader, isRTL && styles.rowRTL]}>
+        <LinearGradient
+          colors={getCardBackground()}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[
+            styles.azkarCard,
+            isCompleted && styles.completedCard,
+            isCurrentListening && styles.listeningCard,
+          ]}
+        >
+          {/* Header with repeat count and actions */}
+          <View style={[styles.cardHeader, isRTL && styles.rowRTL]}>
+            {/* Repeat Badge */}
             <LinearGradient
-              colors={THEME.gradients.gold}
+              colors={isCompleted ? ['#FFF', '#FFF'] : THEME.gradients.gold}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.repeatBadge}
             >
-              <Text style={styles.repeatText}>×{item.repeat_count}</Text>
+              <Text style={[styles.repeatText, isCompleted && { color: '#FFD700' }]}>
+                ×{item.repeat_count}
+              </Text>
             </LinearGradient>
-            <View style={styles.headerActions}>
+
+            {/* Action Buttons */}
+            <View style={[styles.actionButtons, isRTL && styles.rowRTL]}>
+              {/* Listen Button */}
               <ListenButton
                 text={item.arabic_text}
                 language="ar"
                 size="small"
                 showLabel={false}
               />
-              <Pressable style={styles.favoriteButton} onPress={handleFavorite}>
-                <Animated.View style={heartStyle}>
-                  <Ionicons
-                    name={item.is_favorite ? 'heart' : 'heart-outline'}
-                    size={24}
-                    color={item.is_favorite ? '#FF6B6B' : THEME.colors.textMuted}
-                  />
-                </Animated.View>
+
+              {/* Favorite Button */}
+              <Pressable
+                style={styles.iconButton}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  // Toggle favorite
+                }}
+              >
+                <Ionicons
+                  name={item.is_favorite ? 'heart' : 'heart-outline'}
+                  size={22}
+                  color={item.is_favorite ? '#FF6B6B' : THEME.colors.textMuted}
+                />
               </Pressable>
             </View>
           </View>
 
           {/* Arabic Text */}
-          <Text style={styles.arabicText} numberOfLines={3}>
+          <Text style={[styles.arabicText, isCompleted && styles.completedText]} numberOfLines={3}>
             {item.arabic_text}
           </Text>
 
-          {/* Transliteration (if available) */}
+          {/* Transliteration */}
           {item.transliteration && (
-            <View style={styles.transliterationContainer}>
-              <Ionicons name="text" size={14} color={THEME.colors.textMuted} />
-              <Text style={styles.transliterationText} numberOfLines={2}>
-                {item.transliteration}
-              </Text>
-            </View>
+            <Text style={[styles.transliterationText, isCompleted && { color: '#333' }]} numberOfLines={2}>
+              {item.transliteration}
+            </Text>
           )}
 
-          {/* Translation (for non-Arabic languages) */}
-          {currentLanguage !== 'ar' && item.translation_en && (
-            <View style={styles.translationContainer}>
-              <View style={[styles.translationHeader, isRTL && styles.rowRTL]}>
-                <Ionicons name="language" size={14} color={THEME.colors.primary} />
-                <Text style={[styles.translationLabel, isRTL && { marginRight: 6, marginLeft: 0 }]}>
-                  {t('azkar.translation')}
+          {/* Progress Section */}
+          <View style={styles.progressSection}>
+            {/* Progress Bar */}
+            <View style={styles.progressBarContainer}>
+              <View style={styles.progressBarBg}>
+                <LinearGradient
+                  colors={isCompleted ? ['#FFD700', '#FFD700'] : THEME.gradients.primary}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[styles.progressBarFill, { width: `${Math.min(progressPercent, 100)}%` }]}
+                />
+              </View>
+              <Text style={[styles.progressText, isCompleted && { color: '#333' }]}>
+                {currentCount}/{item.repeat_count}
+              </Text>
+            </View>
+
+            {/* Completion Timer */}
+            {isCompleted && completedAt && (
+              <View style={styles.timerContainer}>
+                <Ionicons name="time-outline" size={16} color="#333" />
+                <Text style={styles.timerText}>
+                  {t('azkar.resetsIn')}: {getRemainingTime(completedAt)}
                 </Text>
               </View>
-              <Text style={[styles.translationText, isRTL && styles.textRTL]}>
-                {item.translation_en}
-              </Text>
-            </View>
-          )}
-
-          {/* Virtue */}
-          {item.virtue_ar && (
-            <LinearGradient
-              colors={[THEME.colors.primary + '12', THEME.colors.primary + '06']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.virtueContainer}
-            >
-              <Ionicons name="star" size={16} color={THEME.colors.gold} />
-              <Text style={styles.virtueText} numberOfLines={2}>
-                {item.virtue_ar}
-              </Text>
-            </LinearGradient>
-          )}
-
-          {/* Footer */}
-          <View style={[styles.footer, isRTL && styles.rowRTL]}>
-            <Text style={[styles.reference, isRTL && styles.textRTL]}>{item.reference_ar || t('azkar.reference')}</Text>
-            <View style={[styles.arrowContainer, isRTL && styles.rowRTL]}>
-              <Text style={styles.readMore}>{t('common.next')}</Text>
-              <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={18} color={THEME.colors.primary} />
-            </View>
+            )}
           </View>
-        </View>
+
+          {/* Action Row */}
+          <View style={[styles.actionRow, isRTL && styles.rowRTL]}>
+            {/* Touch Count Button */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.countButton,
+                pressed && styles.countButtonPressed,
+                isCompleted && styles.disabledButton,
+              ]}
+              onPress={onTouchCount}
+              disabled={isCompleted}
+            >
+              <LinearGradient
+                colors={isCompleted ? ['#CCC', '#CCC'] : THEME.gradients.primary}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.countButtonGradient}
+              >
+                <Ionicons name="add-circle" size={20} color="#FFF" />
+                <Text style={styles.countButtonText}>{t('azkar.touch')}</Text>
+              </LinearGradient>
+            </Pressable>
+
+            {/* Voice Count Button */}
+            <Animated.View style={isCurrentListening ? listeningStyle : {}}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.voiceButton,
+                  pressed && styles.voiceButtonPressed,
+                  isCurrentListening && styles.voiceButtonActive,
+                  isCompleted && styles.disabledButton,
+                ]}
+                onPress={onVoiceCount}
+                disabled={isCompleted}
+              >
+                <View style={[
+                  styles.voiceButtonInner,
+                  isCurrentListening && styles.voiceButtonInnerActive,
+                ]}>
+                  <Ionicons
+                    name={isCurrentListening ? 'stop-circle' : 'mic'}
+                    size={20}
+                    color={isCurrentListening ? '#FF4444' : THEME.colors.gold}
+                  />
+                  <Text style={[
+                    styles.voiceButtonText,
+                    isCurrentListening && styles.voiceButtonTextActive,
+                  ]}>
+                    {isCurrentListening ? t('azkar.stop') : t('azkar.voice')}
+                  </Text>
+                </View>
+              </Pressable>
+            </Animated.View>
+          </View>
+
+          {/* Listening Indicator */}
+          {isCurrentListening && (
+            <View style={styles.listeningIndicator}>
+              <Animated.View style={[styles.listeningDot, listeningStyle]} />
+              <Animated.View style={[styles.listeningDot, listeningStyle, { animationDelay: '0.2s' }]} />
+              <Animated.View style={[styles.listeningDot, listeningStyle, { animationDelay: '0.4s' }]} />
+              <Text style={styles.listeningText}>{t('azkar.listening')}</Text>
+            </View>
+          )}
+
+          {/* Completed Badge */}
+          {isCompleted && (
+            <View style={styles.completedBadge}>
+              <Ionicons name="checkmark-circle" size={24} color="#FFF" />
+              <Text style={styles.completedBadgeText}>{t('azkar.completed')}</Text>
+            </View>
+          )}
+        </LinearGradient>
       </Pressable>
     </Animated.View>
   );
 };
 
+// ============================================================
+// MAIN SCREEN COMPONENT
+// ============================================================
 export default function CategoryDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { isRTL, currentLanguage } = useLanguage();
   const { id } = useLocalSearchParams();
+  const { refreshStats } = useApp();
+  const flatListRef = useRef<FlatList>(null);
+
   const [azkar, setAzkar] = useState<Azkar[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [categoryName, setCategoryName] = useState('');
   const [categoryColor, setCategoryColor] = useState(THEME.colors.primary);
+
+  // Progress tracking
+  const [progressMap, setProgressMap] = useState<Map<number, AzkarProgress>>(new Map());
+
+  // Voice listening state
+  const [isListening, setIsListening] = useState(false);
+  const [currentListeningId, setCurrentListeningId] = useState<number | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load progress from storage
+  useEffect(() => {
+    loadProgress();
+  }, [id]);
+
+  // Check for reset timers
+  useEffect(() => {
+    const checkResetTimers = () => {
+      const now = Date.now();
+      let hasChanges = false;
+
+      progressMap.forEach((progress, azkarId) => {
+        if (progress.isCompleted && progress.completedAt) {
+          const elapsed = now - progress.completedAt;
+          if (elapsed >= RESET_INTERVAL) {
+            // Reset this azkar
+            progressMap.set(azkarId, {
+              ...progress,
+              count: 0,
+              isCompleted: false,
+              completedAt: null,
+            });
+            hasChanges = true;
+          }
+        }
+      });
+
+      if (hasChanges) {
+        setProgressMap(new Map(progressMap));
+        saveProgress(progressMap);
+      }
+    };
+
+    const interval = setInterval(checkResetTimers, 1000);
+    return () => clearInterval(interval);
+  }, [progressMap]);
+
+  const loadProgress = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(`${PROGRESS_STORAGE_KEY}_${id}`);
+      if (stored) {
+        const data: AzkarProgress[] = JSON.parse(stored);
+        const map = new Map<number, AzkarProgress>();
+        data.forEach(p => map.set(p.azkarId, p));
+        setProgressMap(map);
+      }
+    } catch (error) {
+      console.error('Error loading progress:', error);
+    }
+  };
+
+  const saveProgress = async (map: Map<number, AzkarProgress>) => {
+    try {
+      const data = Array.from(map.values());
+      await AsyncStorage.setItem(`${PROGRESS_STORAGE_KEY}_${id}`, JSON.stringify(data));
+    } catch (error) {
+      console.error('Error saving progress:', error);
+    }
+  };
+
+  const getRemainingTime = useCallback((completedAt: number): string => {
+    const now = Date.now();
+    const resetTime = completedAt + RESET_INTERVAL;
+    const diffMs = resetTime - now;
+
+    if (diffMs <= 0) return '00:00';
+
+    const minutes = Math.floor((diffMs / 1000 / 60) % 60);
+    const seconds = Math.floor((diffMs / 1000) % 60);
+
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }, []);
 
   useEffect(() => {
     loadAzkar();
@@ -205,11 +409,13 @@ export default function CategoryDetailScreen() {
 
   const loadAzkar = async () => {
     try {
-      const data = await apiService.getAzkarByCategory(Number(id));
-      setAzkar(data);
-      
-      const categories = await apiService.getCategories();
-      const category = categories.find((c) => c.id === Number(id));
+      const [azkarData, categories] = await Promise.all([
+        apiService.getAzkarByCategory(Number(id)),
+        apiService.getCategories(),
+      ]);
+      setAzkar(azkarData);
+
+      const category = categories.find((c: any) => c.id === Number(id));
       if (category) {
         setCategoryName(category.name_ar);
         setCategoryColor(`#${category.color_hex}`);
@@ -223,25 +429,151 @@ export default function CategoryDetailScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await loadAzkar();
     setRefreshing(false);
   };
 
-  const toggleFavorite = async (azkarId: number) => {
+  const handleTouchCount = async (azkarId: number, repeatCount: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const currentProgress = progressMap.get(azkarId) || {
+      azkarId,
+      count: 0,
+      isCompleted: false,
+      completedAt: null,
+    };
+
+    if (currentProgress.isCompleted) return;
+
+    const newCount = currentProgress.count + 1;
+    const isNowCompleted = newCount >= repeatCount;
+
+    const updatedProgress: AzkarProgress = {
+      ...currentProgress,
+      count: newCount,
+      isCompleted: isNowCompleted,
+      completedAt: isNowCompleted ? Date.now() : null,
+    };
+
+    const newMap = new Map(progressMap);
+    newMap.set(azkarId, updatedProgress);
+    setProgressMap(newMap);
+    saveProgress(newMap);
+
+    // Record to backend
     try {
-      const result = await apiService.toggleFavorite(azkarId);
-      setAzkar((prev) =>
-        prev.map((item) =>
-          item.id === azkarId
-            ? { ...item, is_favorite: result.is_favorite }
-            : item
-        )
-      );
+      await apiService.recordTasbeeh({
+        method: 'touch',
+        count: 1,
+        zikr_id: azkarId,
+      });
+      await refreshStats();
     } catch (error) {
-      console.error('Error toggling favorite:', error);
+      console.error('Error recording tasbeeh:', error);
+    }
+
+    // If completed, auto-scroll to next azkar
+    if (isNowCompleted) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      autoScrollToNextAzkar(azkarId);
     }
   };
+
+  const handleVoiceCount = (azkarId: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (currentListeningId === azkarId) {
+      // Stop listening
+      setIsListening(false);
+      setCurrentListeningId(null);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    } else {
+      // Start listening for this azkar
+      setIsListening(true);
+      setCurrentListeningId(azkarId);
+
+      // Simulate voice recognition counting every 3 seconds
+      // In production, replace with expo-speech-recognition
+      timerRef.current = setInterval(() => {
+        setProgressMap(prev => {
+          const progress = prev.get(azkarId);
+          const azkarItem = azkar.find(a => a.id === azkarId);
+          if (!progress || !azkarItem) return prev;
+
+          const newCount = progress.count + 1;
+          const isNowCompleted = newCount >= azkarItem.repeat_count;
+
+          if (isNowCompleted) {
+            // Stop listening when completed
+            setIsListening(false);
+            setCurrentListeningId(null);
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+            }
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            autoScrollToNextAzkar(azkarId);
+          } else {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
+
+          const newMap = new Map(prev);
+          newMap.set(azkarId, {
+            ...progress,
+            count: newCount,
+            isCompleted: isNowCompleted,
+            completedAt: isNowCompleted ? Date.now() : null,
+          });
+          saveProgress(newMap);
+          return newMap;
+        });
+      }, 2000); // Simulate voice detection every 2 seconds
+    }
+  };
+
+  const autoScrollToNextAzkar = (currentAzkarId: number) => {
+    const currentIndex = azkar.findIndex(a => a.id === currentAzkarId);
+    if (currentIndex !== -1 && currentIndex < azkar.length - 1) {
+      const nextIndex = currentIndex + 1;
+      const nextAzkar = azkar[nextIndex];
+
+      // Check if next azkar is not completed
+      const nextProgress = progressMap.get(nextAzkar.id!);
+      if (!nextProgress?.isCompleted) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({
+            index: nextIndex,
+            animated: true,
+            viewPosition: 0.3,
+          });
+
+          // If voice listening was active, continue with next azkar
+          if (isListening) {
+            handleVoiceCount(nextAzkar.id!);
+          }
+        }, 500);
+      }
+    }
+  };
+
+  const renderAzkar = ({ item, index }: { item: Azkar; index: number }) => (
+    <AzkarCard
+      item={item}
+      index={index}
+      progress={progressMap.get(item.id!) || null}
+      onTouchCount={() => handleTouchCount(item.id!, item.repeat_count)}
+      onVoiceCount={() => handleVoiceCount(item.id!)}
+      isListening={isListening}
+      isCurrentListening={currentListeningId === item.id}
+      isRTL={isRTL}
+      currentLanguage={currentLanguage?.code || 'ar'}
+      t={t}
+      getRemainingTime={getRemainingTime}
+    />
+  );
 
   if (loading) {
     return (
@@ -266,6 +598,10 @@ export default function CategoryDetailScreen() {
     );
   }
 
+  // Calculate total progress
+  const totalCount = Array.from(progressMap.values()).reduce((sum, p) => sum + p.count, 0);
+  const completedCount = Array.from(progressMap.values()).filter(p => p.isCompleted).length;
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -278,7 +614,7 @@ export default function CategoryDetailScreen() {
         style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
         <Animated.View
-          entering={FadeInDown.springify()}
+          entering={FadeIn}
           style={[styles.headerContent, isRTL && styles.headerContentRTL]}
         >
           <Pressable
@@ -287,6 +623,10 @@ export default function CategoryDetailScreen() {
               pressed && styles.buttonPressed,
             ]}
             onPress={() => {
+              // Stop listening when leaving
+              if (isListening && timerRef.current) {
+                clearInterval(timerRef.current);
+              }
               Haptics.selectionAsync();
               router.back();
             }}
@@ -295,26 +635,32 @@ export default function CategoryDetailScreen() {
           </Pressable>
           <View style={styles.headerCenter}>
             <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{categoryName}</Text>
-            <Text style={[styles.headerSubtitle, isRTL && styles.textRTL]}>{azkar.length} {t('azkar.title')}</Text>
+            <Text style={[styles.headerSubtitle, isRTL && styles.textRTL]}>
+              {azkar.length} {t('azkar.title')} • {completedCount}/{azkar.length} {t('azkar.completed')}
+            </Text>
           </View>
           <View style={styles.headerPlaceholder} />
         </Animated.View>
+
+        {/* Daily Stats */}
+        <View style={[styles.statsRow, isRTL && styles.rowRTL]}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{totalCount}</Text>
+            <Text style={styles.statLabel}>{t('stats.todayTasbeeh')}</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{completedCount}</Text>
+            <Text style={styles.statLabel}>{t('stats.completedAzkar')}</Text>
+          </View>
+        </View>
       </LinearGradient>
 
       {/* List */}
       <FlatList
+        ref={flatListRef}
         data={azkar}
-        renderItem={({ item, index }) => (
-          <AzkarCard
-            item={item}
-            index={index}
-            onPress={() => router.push(`/azkar/${item.id}`)}
-            onFavorite={() => toggleFavorite(item.id!)}
-            isRTL={isRTL}
-            currentLanguage={currentLanguage?.code || 'ar'}
-            t={t}
-          />
-        )}
+        renderItem={renderAzkar}
         keyExtractor={(item, index) => item.id?.toString() || index.toString()}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
@@ -328,13 +674,46 @@ export default function CategoryDetailScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
-              <Ionicons name="book-outline" size={48} color={THEME.colors.textMuted} />
-            </View>
+            <Ionicons name="book-outline" size={48} color={THEME.colors.textMuted} />
             <Text style={[styles.emptyText, isRTL && styles.textRTL]}>{t('azkar.noAzkar')}</Text>
           </View>
         }
+        onScrollToIndexFailed={(info) => {
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({
+              index: info.index,
+              animated: true,
+            });
+          }, 500);
+        }}
       />
+
+      {/* Floating Voice Button (when listening) */}
+      {isListening && (
+        <Animated.View
+          entering={FadeIn}
+          style={styles.floatingVoiceButton}
+        >
+          <Pressable
+            onPress={() => {
+              setIsListening(false);
+              setCurrentListeningId(null);
+              if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+              }
+            }}
+          >
+            <LinearGradient
+              colors={['#FF4444', '#CC0000']}
+              style={styles.floatingButtonGradient}
+            >
+              <Ionicons name="stop-circle" size={32} color="#FFF" />
+              <Text style={styles.floatingButtonText}>{t('azkar.stopListening')}</Text>
+            </LinearGradient>
+          </Pressable>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -372,6 +751,7 @@ const styles = StyleSheet.create({
   },
   headerCenter: {
     alignItems: 'center',
+    flex: 1,
   },
   headerTitle: {
     fontSize: 22,
@@ -393,6 +773,35 @@ const styles = StyleSheet.create({
   rowRTL: {
     flexDirection: 'row-reverse',
   },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: THEME.spacing.md,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: THEME.borderRadius.lg,
+    padding: THEME.spacing.md,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginHorizontal: THEME.spacing.md,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -407,22 +816,24 @@ const styles = StyleSheet.create({
     paddingTop: THEME.spacing.lg,
   },
   azkarCard: {
-    backgroundColor: THEME.colors.surface,
     borderRadius: THEME.borderRadius.lg,
     padding: THEME.spacing.md,
     marginBottom: THEME.spacing.md,
-    ...THEME.shadows.small,
+    ...THEME.shadows.medium,
   },
-  azkarHeader: {
+  completedCard: {
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  listeningCard: {
+    borderWidth: 2,
+    borderColor: THEME.colors.primary,
+  },
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: THEME.spacing.md,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
   },
   repeatBadge: {
     borderRadius: THEME.borderRadius.md,
@@ -434,111 +845,197 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  favoriteButton: {
-    width: 44,
-    height: 44,
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
   arabicText: {
-    fontSize: 20,
-    lineHeight: 36,
+    fontSize: 22,
+    lineHeight: 40,
     color: THEME.colors.text,
     textAlign: 'right',
-    marginBottom: THEME.spacing.md,
+    marginBottom: THEME.spacing.sm,
   },
-  transliterationContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: THEME.colors.background,
-    borderRadius: THEME.borderRadius.md,
-    padding: THEME.spacing.sm,
-    marginBottom: THEME.spacing.md,
+  completedText: {
+    color: '#333',
   },
   transliterationText: {
-    flex: 1,
     fontSize: 14,
     color: THEME.colors.textMuted,
     fontStyle: 'italic',
-    marginLeft: THEME.spacing.sm,
-    lineHeight: 22,
-  },
-  translationContainer: {
-    backgroundColor: THEME.colors.primary + '08',
-    borderRadius: THEME.borderRadius.md,
-    padding: THEME.spacing.md,
     marginBottom: THEME.spacing.md,
-    borderLeftWidth: 3,
-    borderLeftColor: THEME.colors.primary,
   },
-  translationHeader: {
+  progressSection: {
+    marginBottom: THEME.spacing.md,
+  },
+  progressBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: THEME.spacing.xs,
+    gap: THEME.spacing.sm,
   },
-  translationLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: THEME.colors.primary,
-    marginLeft: 6,
-  },
-  translationText: {
-    fontSize: 15,
-    color: THEME.colors.text,
-    lineHeight: 24,
-  },
-  virtueContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderRadius: THEME.borderRadius.md,
-    padding: THEME.spacing.md,
-    marginBottom: THEME.spacing.md,
-  },
-  virtueText: {
+  progressBarBg: {
     flex: 1,
-    fontSize: 14,
-    color: THEME.colors.text,
-    marginLeft: THEME.spacing.sm,
-    lineHeight: 22,
+    height: 10,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 5,
+    overflow: 'hidden',
   },
-  footer: {
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  progressText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.text,
+    minWidth: 50,
+    textAlign: 'center',
+  },
+  timerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: THEME.spacing.sm,
+    gap: 6,
+  },
+  timerText: {
+    fontSize: 13,
+    color: '#333',
+    fontWeight: '500',
+  },
+  actionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: THEME.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.border,
+    gap: THEME.spacing.sm,
   },
-  reference: {
-    fontSize: 13,
-    color: THEME.colors.textSecondary,
+  countButton: {
+    flex: 1,
+    borderRadius: THEME.borderRadius.md,
+    overflow: 'hidden',
   },
-  arrowContainer: {
+  countButtonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
+  },
+  countButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 8,
   },
-  readMore: {
-    fontSize: 13,
-    color: THEME.colors.primary,
+  countButtonText: {
+    fontSize: 14,
     fontWeight: '600',
-    marginRight: 4,
+    color: '#FFFFFF',
+  },
+  voiceButton: {
+    flex: 1,
+    borderRadius: THEME.borderRadius.md,
+    overflow: 'hidden',
+  },
+  voiceButtonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
+  },
+  voiceButtonActive: {
+    borderWidth: 2,
+    borderColor: '#FF4444',
+  },
+  voiceButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 8,
+    backgroundColor: THEME.colors.gold + '20',
+    borderRadius: THEME.borderRadius.md,
+  },
+  voiceButtonInnerActive: {
+    backgroundColor: '#FF444420',
+  },
+  voiceButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.gold,
+  },
+  voiceButtonTextActive: {
+    color: '#FF4444',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  listeningIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: THEME.spacing.sm,
+    gap: 6,
+  },
+  listeningDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF4444',
+  },
+  listeningText: {
+    fontSize: 13,
+    color: '#FF4444',
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  completedBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  completedBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 64,
   },
-  emptyIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: THEME.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: THEME.spacing.md,
-  },
   emptyText: {
     fontSize: 16,
     color: THEME.colors.textSecondary,
+    marginTop: THEME.spacing.md,
+  },
+  floatingVoiceButton: {
+    position: 'absolute',
+    bottom: 30,
+    left: THEME.spacing.md,
+    right: THEME.spacing.md,
+  },
+  floatingButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: THEME.borderRadius.lg,
+    gap: 12,
+    ...THEME.shadows.large,
+  },
+  floatingButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
