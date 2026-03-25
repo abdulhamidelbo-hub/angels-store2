@@ -174,7 +174,7 @@ export default function HomeScreen() {
 
             <TouchableOpacity
               style={styles.quickAction}
-              onPress={() => router.push('/prayer-times')}
+              onPress={() => router.push('/prayer-times' as any)}
             >
               <View style={styles.quickActionIcon}>
                 <Ionicons name="time" size={24} color={COLORS.primary} />
@@ -184,12 +184,22 @@ export default function HomeScreen() {
 
             <TouchableOpacity
               style={styles.quickAction}
-              onPress={() => router.push('/challenges')}
+              onPress={() => router.push('/challenges' as any)}
             >
               <View style={styles.quickActionIcon}>
                 <Ionicons name="trophy" size={24} color={COLORS.primary} />
               </View>
               <Text style={styles.quickActionText}>التحديات</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickAction}
+              onPress={() => router.push('/subscription' as any)}
+            >
+              <View style={styles.quickActionIcon}>
+                <Ionicons name="card" size={24} color={COLORS.primary} />
+              </View>
+              <Text style={styles.quickActionText}>الاشتراك</Text>
             </TouchableOpacity>
           </View>
         </View>
