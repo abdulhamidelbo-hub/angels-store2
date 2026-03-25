@@ -14,23 +14,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
   FadeInDown,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { THEME } from '../../src/constants/theme';
-import { AnimatedCard } from '../../src/components/ui';
+import { useLanguage } from '../../src/contexts/LanguageContext';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const { currentLanguage } = useLanguage();
   const pressCountRef = useRef(0);
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
+  const [autoPlay, setAutoPlay] = useState(false);
 
   const handleLogoPress = useCallback(() => {
     pressCountRef.current += 1;
@@ -59,13 +59,19 @@ export default function SettingsScreen() {
 
   const settingsSections = [
     {
-      title: 'عام',
+      title: t('settings.general'),
       icon: 'settings',
       items: [
-        { title: 'اللغة', icon: 'language', value: 'العربية', onPress: () => {} },
-        { title: 'حجم الخط', icon: 'text', value: 'متوسط', onPress: () => {} },
         {
-          title: 'الوضع الليلي',
+          title: t('settings.language'),
+          icon: 'language',
+          value: currentLanguage?.flag + ' ' + currentLanguage?.nameNative || 'العربية',
+          onPress: () => router.push('/language-selection'),
+          showArrow: true,
+        },
+        { title: t('settings.fontSize'), icon: 'text', value: t('settings.medium'), onPress: () => {} },
+        {
+          title: t('settings.darkMode'),
           icon: 'moon',
           toggle: true,
           value: darkMode,
@@ -74,35 +80,50 @@ export default function SettingsScreen() {
       ],
     },
     {
-      title: 'الإشعارات',
+      title: t('settings.audio'),
+      icon: 'volume-high',
+      items: [
+        {
+          title: t('settings.autoPlay'),
+          icon: 'play-circle',
+          toggle: true,
+          value: autoPlay,
+          onToggle: () => setAutoPlay((prev) => !prev),
+        },
+        { title: t('settings.playbackSpeed'), icon: 'speedometer', value: t('settings.normal'), onPress: () => {} },
+        { title: t('settings.translationMode'), icon: 'document-text', value: t('settings.withTranslation'), onPress: () => {} },
+      ],
+    },
+    {
+      title: t('settings.notifications'),
       icon: 'notifications',
       items: [
         {
-          title: 'إشعارات الصلاة',
+          title: t('settings.prayerNotifications'),
           icon: 'time',
           toggle: true,
           value: notifications,
           onToggle: () => setNotifications((prev) => !prev),
         },
-        { title: 'إشعارات الأذكار', icon: 'alarm', value: 'مفعّل', onPress: () => {} },
-        { title: 'إشعارات المناسبات', icon: 'calendar', value: 'مفعّل', onPress: () => {} },
+        { title: t('settings.azkarReminders'), icon: 'alarm', value: t('settings.enabled'), onPress: () => {} },
+        { title: t('settings.eventAlerts'), icon: 'calendar', value: t('settings.enabled'), onPress: () => {} },
       ],
     },
     {
-      title: 'الاشتراك',
+      title: t('settings.subscription'),
       icon: 'diamond',
       items: [
-        { title: 'حالة الاشتراك', icon: 'card', value: 'مفعّل', onPress: () => router.push('/subscription' as any) },
-        { title: 'تجديد الاشتراك', icon: 'refresh', onPress: () => router.push('/subscription' as any) },
+        { title: t('settings.subscriptionStatus'), icon: 'card', value: t('settings.enabled'), onPress: () => router.push('/subscription' as any) },
+        { title: t('settings.renewSubscription'), icon: 'refresh', onPress: () => router.push('/subscription' as any) },
       ],
     },
     {
-      title: 'عن التطبيق',
+      title: t('settings.about'),
       icon: 'information-circle',
       items: [
-        { title: 'معلومات التطبيق', icon: 'information-circle', onPress: () => {} },
-        { title: 'شارك التطبيق', icon: 'share-social', onPress: () => {} },
-        { title: 'قيّم التطبيق', icon: 'star', onPress: () => {} },
+        { title: t('settings.appInfo'), icon: 'information-circle', onPress: () => {} },
+        { title: t('settings.shareApp'), icon: 'share-social', onPress: () => {} },
+        { title: t('settings.rateApp'), icon: 'star', onPress: () => {} },
       ],
     },
   ];
@@ -118,7 +139,7 @@ export default function SettingsScreen() {
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
-        <Text style={styles.headerTitle}>الإعدادات</Text>
+        <Text style={styles.headerTitle}>{t('settings.title')}</Text>
       </LinearGradient>
 
       <ScrollView
@@ -185,11 +206,13 @@ export default function SettingsScreen() {
                       {item.value && (
                         <Text style={styles.settingValue}>{item.value}</Text>
                       )}
-                      <Ionicons
-                        name="chevron-forward"
-                        size={20}
-                        color={THEME.colors.textMuted}
-                      />
+                      {item.showArrow !== false && (
+                        <Ionicons
+                          name="chevron-forward"
+                          size={20}
+                          color={THEME.colors.textMuted}
+                        />
+                      )}
                     </View>
                   )}
                 </Pressable>
@@ -217,12 +240,12 @@ export default function SettingsScreen() {
             >
               <Ionicons name="leaf" size={32} color="#FFFFFF" />
             </LinearGradient>
-            <Text style={styles.versionText}>نسخة 1.0.0</Text>
-            <Text style={styles.versionSubtext}>أذكار المسلم - بدون إعلانات</Text>
+            <Text style={styles.versionText}>{t('settings.version')} 1.0.0</Text>
+            <Text style={styles.versionSubtext}>{t('common.appName')}</Text>
           </Pressable>
         </Animated.View>
 
-        <View style={{ height: 32 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
@@ -268,7 +291,6 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.surface,
     borderRadius: THEME.borderRadius.lg,
     overflow: 'hidden',
-    ...THEME.shadows.small,
   },
   settingItem: {
     flexDirection: 'row',
@@ -326,7 +348,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: THEME.spacing.md,
-    ...THEME.shadows.glow,
   },
   versionText: {
     fontSize: 16,
