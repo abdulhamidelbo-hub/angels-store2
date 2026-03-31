@@ -42,7 +42,11 @@ export const LANGUAGES: Language[] = [
   { code: 'he', nameNative: 'עברית', nameEn: 'Hebrew', nameAr: 'العبرية', flag: '🇮🇱', isRTL: true, speechCode: 'he-IL' },
 ];
 
-export const POPULAR_LANGUAGES = ['ar', 'en', 'tr', 'fr', 'ur', 'id', 'ms', 'hi', 'bn'];
+// اللغات المدعومة بالكامل مع ملفات الترجمة
+export const SUPPORTED_LANGUAGES = ['ar', 'en', 'tr', 'fr', 'ur', 'id', 'bn', 'ms', 'sw', 'ha'];
+
+// اللغات الأكثر شيوعاً (تظهر أولاً في قائمة الاختيار)
+export const POPULAR_LANGUAGES = ['ar', 'en', 'ur', 'id', 'tr', 'bn', 'fr', 'ms', 'sw', 'ha'];
 
 export const RTL_LANGUAGES = LANGUAGES.filter(lang => lang.isRTL).map(lang => lang.code);
 

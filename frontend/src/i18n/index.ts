@@ -9,17 +9,30 @@ import ar from './locales/ar.json';
 import en from './locales/en.json';
 import tr from './locales/tr.json';
 import fr from './locales/fr.json';
+import ur from './locales/ur.json';
+import id from './locales/id.json';
+import bn from './locales/bn.json';
+import ms from './locales/ms.json';
+import sw from './locales/sw.json';
+import ha from './locales/ha.json';
 
 import { LANGUAGES, isRTLLanguage } from './languages';
 
 const LANGUAGE_STORAGE_KEY = '@app_language';
 
-// Resources object with all translations
+// Resources object with all translations (10 languages)
+// Arabic, English, Turkish, French, Urdu, Indonesian, Bengali, Malay, Swahili, Hausa
 const resources = {
   ar: { translation: ar },
   en: { translation: en },
   tr: { translation: tr },
   fr: { translation: fr },
+  ur: { translation: ur },
+  id: { translation: id },
+  bn: { translation: bn },
+  ms: { translation: ms },
+  sw: { translation: sw },
+  ha: { translation: ha },
 };
 
 // Get saved language or detect from device
