@@ -369,6 +369,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: THEME.spacing.md,
     paddingTop: THEME.spacing.lg,
+    paddingBottom: 100,
   },
   mainCard: {
     backgroundColor: THEME.colors.surface,
