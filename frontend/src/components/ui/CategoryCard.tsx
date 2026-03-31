@@ -17,7 +17,26 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { THEME } from '../../constants/theme';
+
+// خريطة مفاتيح الترجمة للفئات
+const CATEGORY_TRANSLATION_KEYS: Record<number, string> = {
+  1: 'categories.morning',
+  2: 'categories.evening',
+  3: 'categories.afterPrayer',
+  4: 'categories.sleep',
+  5: 'categories.wakeUp',
+  6: 'categories.food',
+  7: 'categories.home',
+  8: 'categories.wudu',
+  9: 'categories.wudu', // أذكار الوضوء
+  10: 'categories.daily', // أذكار الأذان
+  11: 'categories.mosque',
+  12: 'categories.tasbeeh',
+  13: 'categories.dua',
+  14: 'categories.protection',
+};
 
 interface CategoryCardProps {
   id: number;
@@ -46,6 +65,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
   isRTL = true,
   currentLanguage = 'ar',
 }) => {
+  const { t } = useTranslation();
   const opacity = useSharedValue(0);
   const translateX = useSharedValue(variant === 'list' ? 50 : 0);
   const translateY = useSharedValue(variant === 'grid' ? 30 : 0);
@@ -90,8 +110,12 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
     isPressed.value = false;
   };
 
-  // Get the display name based on current language
-  const displayName = currentLanguage === 'ar' ? nameAr : (nameEn || nameAr);
+  // استخدام مفتاح الترجمة بدلاً من النص الثابت
+  const translationKey = CATEGORY_TRANSLATION_KEYS[id];
+  const translatedName = translationKey ? t(translationKey) : nameAr;
+  
+  // عرض الاسم المترجم - إذا كانت اللغة عربية نعرض العربي، وإلا نعرض الترجمة
+  const displayName = currentLanguage === 'ar' ? nameAr : translatedName;
 
   if (variant === 'grid') {
     return (
@@ -141,7 +165,10 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
           {/* Content */}
           <View style={styles.content}>
             <Text style={[styles.title, isRTL && styles.textRTL]}>{displayName}</Text>
-            {nameEn && currentLanguage !== 'en' && <Text style={[styles.subtitle, isRTL && styles.textRTL]}>{nameEn}</Text>}
+            {/* عرض النص العربي كـ subtitle للغات غير العربية */}
+            {currentLanguage !== 'ar' && (
+              <Text style={[styles.subtitle, styles.textRTL]}>{nameAr}</Text>
+            )}
           </View>
 
           {/* Count Badge */}
