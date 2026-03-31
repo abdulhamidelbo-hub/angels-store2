@@ -252,7 +252,7 @@ export default function AzkarDetailScreen() {
           </Text>
         </Animated.View>
 
-        {/* ========== بطاقة فضل الذكر ========== */}
+        {/* ========== بطاقة فضل الذكر (مترجمة حسب اللغة) ========== */}
         {azkar.virtue_ar && (
           <Animated.View 
             entering={FadeInDown.delay(150).springify()} 
@@ -268,56 +268,36 @@ export default function AzkarDetailScreen() {
                 <Text style={styles.virtueSubtitle}>{t('azkar.virtueDescription')}</Text>
               </View>
               <ListenButton
-                text={azkar.virtue_ar}
-                language="ar"
+                text={currentLanguage?.code === 'ar' ? azkar.virtue_ar : (azkar.virtue_en || azkar.virtue_ar)}
+                language={currentLanguage?.code || 'ar'}
                 size="small"
                 showLabel={false}
                 variant="secondary"
               />
             </View>
             
-            {/* نص الفضل - قابل للتمرير */}
+            {/* نص الفضل - يعرض حسب اللغة المختارة */}
             <ScrollView 
               style={[styles.virtueTextScroll, { maxHeight: getVirtueMaxHeight(azkar.virtue_ar) }]}
               nestedScrollEnabled={true}
               showsVerticalScrollIndicator={true}
             >
-              <Text style={[styles.virtueText, isRTL && styles.textRTL]}>
-                {azkar.virtue_ar}
-              </Text>
-              
-              {/* ترجمة الفضل */}
-              {currentLanguage?.code !== 'ar' && azkar.virtue_en && (
-                <View style={styles.virtueTranslationBox}>
-                  <Text style={styles.virtueTranslationText}>
-                    {azkar.virtue_en}
-                  </Text>
-                </View>
+              {/* إذا كانت اللغة عربية، يعرض النص العربي فقط */}
+              {currentLanguage?.code === 'ar' ? (
+                <Text style={[styles.virtueText, styles.textRTL]}>
+                  {azkar.virtue_ar}
+                </Text>
+              ) : (
+                /* إذا كانت اللغة غير عربية، يعرض الترجمة (أو العربي إن لم توجد ترجمة) */
+                <Text style={styles.virtueTextLTR}>
+                  {azkar.virtue_en || azkar.virtue_ar}
+                </Text>
               )}
             </ScrollView>
           </Animated.View>
         )}
 
-        {/* ========== بطاقة الترجمة (للغات غير العربية) ========== */}
-        {currentLanguage?.code !== 'ar' && azkar.translation_en && (
-          <Animated.View 
-            entering={FadeInDown.delay(200).springify()} 
-            style={styles.translationCard}
-          >
-            <View style={[styles.translationHeader, isRTL && styles.rowRTL]}>
-              <Ionicons name="language" size={16} color={THEME.colors.primary} />
-              <Text style={styles.translationLabel}>{t('azkar.translation')}</Text>
-              <View style={{ flex: 1 }} />
-              <ListenButton
-                text={azkar.translation_en}
-                language={currentLanguage?.code || 'en'}
-                size="small"
-                showLabel={false}
-              />
-            </View>
-            <Text style={styles.translationText}>{azkar.translation_en}</Text>
-          </Animated.View>
-        )}
+        {/* ملاحظة: تم إزالة قسم الترجمة - النص الديني يبقى عربياً دائماً */}
 
         {/* ========== بطاقة المرجع - بسيطة ========== */}
         {azkar.reference_ar && (
@@ -593,6 +573,12 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: '#166534',
     textAlign: 'right',
+  },
+  virtueTextLTR: {
+    fontSize: 14,
+    lineHeight: 24,
+    color: '#166534',
+    textAlign: 'left',
   },
   virtueTranslationBox: {
     marginTop: THEME.spacing.sm,
