@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import { THEME } from '../../src/constants/theme';
@@ -22,7 +22,7 @@ import { Azkar } from '../../src/types';
 import { ListenButton } from '../../src/components/ui';
 import { useApp } from '../../src/contexts/AppContext';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function AzkarDetailScreen() {
   const router = useRouter();
@@ -83,6 +83,31 @@ export default function AzkarDetailScreen() {
     setCount(0);
   };
 
+  // حساب حجم الخط المتجاوب حسب طول النص
+  const getResponsiveFontSize = useCallback((baseSize: number, text: string): number => {
+    const textLength = text?.length || 0;
+    if (textLength > 500) return baseSize - 4;
+    if (textLength > 300) return baseSize - 2;
+    return baseSize;
+  }, []);
+
+  // حساب ارتفاع منطقة الفضل حسب طول النص
+  const getVirtueMaxHeight = useCallback((text: string): number => {
+    const textLength = text?.length || 0;
+    if (textLength > 300) return 140;
+    if (textLength > 150) return 110;
+    if (textLength > 80) return 90;
+    return 70;
+  }, []);
+
+  // حساب الهوامش الديناميكية
+  const getDynamicPadding = useCallback((text: string): number => {
+    const textLength = text?.length || 0;
+    if (textLength > 400) return 12;
+    if (textLength > 200) return 16;
+    return 20;
+  }, []);
+
   if (loading || !azkar) {
     return (
       <View style={styles.container}>
@@ -109,12 +134,14 @@ export default function AzkarDetailScreen() {
 
   const progress = azkar.repeat_count > 0 ? (count / azkar.repeat_count) * 100 : 0;
   const isCompleted = count >= azkar.repeat_count;
+  const dynamicPadding = getDynamicPadding(azkar.arabic_text);
+  const arabicFontSize = getResponsiveFontSize(24, azkar.arabic_text);
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Header */}
+      {/* ========== HEADER - مضغوط مع العداد ========== */}
       <LinearGradient
         colors={THEME.gradients.header}
         start={{ x: 0, y: 0 }}
@@ -122,6 +149,7 @@ export default function AzkarDetailScreen() {
         style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
         <View style={[styles.headerContent, isRTL && styles.headerContentRTL]}>
+          {/* زر الرجوع */}
           <Pressable
             style={({ pressed }) => [styles.headerButton, pressed && styles.buttonPressed]}
             onPress={() => {
@@ -132,6 +160,7 @@ export default function AzkarDetailScreen() {
             <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={24} color="#FFFFFF" />
           </Pressable>
           
+          {/* العنوان وعدد التكرار */}
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>{t('azkar.detail')}</Text>
             <View style={styles.repeatBadgeHeader}>
@@ -139,6 +168,7 @@ export default function AzkarDetailScreen() {
             </View>
           </View>
           
+          {/* زر المفضلة */}
           <Pressable
             style={({ pressed }) => [styles.headerButton, pressed && styles.buttonPressed]}
             onPress={toggleFavorite}
@@ -151,103 +181,87 @@ export default function AzkarDetailScreen() {
           </Pressable>
         </View>
 
-        {/* Stats Row in Header */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{count}</Text>
-            <Text style={styles.statLabel}>{t('azkar.current')}</Text>
+        {/* ========== منطقة العداد المضغوطة ========== */}
+        <View style={styles.compactCounter}>
+          <View style={styles.counterItem}>
+            <Text style={styles.counterValue}>{count}</Text>
+            <Text style={styles.counterLabel}>{t('azkar.current')}</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{azkar.repeat_count}</Text>
-            <Text style={styles.statLabel}>{t('azkar.total')}</Text>
+          
+          {/* شريط التقدم */}
+          <View style={styles.progressBarWrapper}>
+            <View style={styles.progressBarBg}>
+              <LinearGradient
+                colors={isCompleted ? THEME.gradients.gold : ['#FFFFFF', '#FFFFFF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.progressBarFill, { width: `${Math.min(progress, 100)}%` }]}
+              />
+            </View>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, isCompleted && styles.completedText]}>
+          
+          <View style={styles.counterItem}>
+            <Text style={styles.counterValue}>{azkar.repeat_count}</Text>
+            <Text style={styles.counterLabel}>{t('azkar.total')}</Text>
+          </View>
+          
+          <View style={styles.counterDivider} />
+          
+          <View style={styles.counterItem}>
+            <Text style={[styles.counterValue, isCompleted && styles.completedText]}>
               {Math.round(progress)}%
             </Text>
-            <Text style={styles.statLabel}>{t('azkar.progress')}</Text>
+            <Text style={styles.counterLabel}>{t('azkar.progress')}</Text>
           </View>
         </View>
       </LinearGradient>
 
-      {/* Main Content - Scrollable */}
+      {/* ========== المحتوى الرئيسي - قابل للتمدد ========== */}
       <ScrollView
-        style={styles.scrollView}
+        style={styles.mainScrollView}
+        contentContainerStyle={styles.mainScrollContent}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + 140 } // Space for bottom buttons
-        ]}
+        bounces={true}
       >
-        {/* Arabic Text Card */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.mainCard}>
-          {/* Listen Button Row */}
-          <View style={[styles.listenRow, isRTL && styles.rowRTL]}>
+        {/* ========== بطاقة النص الأساسي ========== */}
+        <Animated.View 
+          entering={FadeInDown.delay(100).springify()} 
+          style={[styles.mainTextCard, { padding: dynamicPadding }]}
+        >
+          {/* زر الاستماع */}
+          <View style={styles.listenButtonRow}>
             <ListenButton
               text={azkar.arabic_text}
               language="ar"
-              size="medium"
-              showLabel={true}
+              size="small"
+              showLabel={false}
             />
           </View>
 
-          {/* Arabic Text - Scrollable if needed */}
-          <ScrollView 
-            style={styles.arabicTextScroll}
-            nestedScrollEnabled={true}
-            showsVerticalScrollIndicator={false}
+          {/* النص العربي - الآن يأخذ كل المساحة المتاحة */}
+          <Text 
+            style={[
+              styles.arabicText, 
+              { 
+                fontSize: arabicFontSize,
+                lineHeight: arabicFontSize * 1.8,
+              }
+            ]}
           >
-            <Text style={styles.arabicText}>{azkar.arabic_text}</Text>
-          </ScrollView>
-
-          {/* Transliteration */}
-          {azkar.transliteration && (
-            <View style={styles.transliterationBox}>
-              <View style={[styles.sectionHeader, isRTL && styles.rowRTL]}>
-                <Ionicons name="text" size={16} color={THEME.colors.textMuted} />
-                <Text style={styles.sectionLabel}>{t('azkar.transliteration')}</Text>
-              </View>
-              <Text style={styles.transliterationText}>{azkar.transliteration}</Text>
-            </View>
-          )}
-
-          {/* Translation (for non-Arabic) */}
-          {currentLanguage?.code !== 'ar' && azkar.translation_en && (
-            <View style={styles.translationBox}>
-              <View style={[styles.sectionHeader, isRTL && styles.rowRTL]}>
-                <Ionicons name="language" size={16} color={THEME.colors.primary} />
-                <Text style={[styles.sectionLabel, { color: THEME.colors.primary }]}>
-                  {t('azkar.translation')}
-                </Text>
-                <View style={{ flex: 1 }} />
-                <ListenButton
-                  text={azkar.translation_en}
-                  language={currentLanguage?.code || 'en'}
-                  size="small"
-                  showLabel={false}
-                />
-              </View>
-              <ScrollView 
-                style={styles.translationScroll}
-                nestedScrollEnabled={true}
-                showsVerticalScrollIndicator={false}
-              >
-                <Text style={styles.translationText}>
-                  {azkar.translation_en}
-                </Text>
-              </ScrollView>
-            </View>
-          )}
+            {azkar.arabic_text}
+          </Text>
         </Animated.View>
 
-        {/* Virtue Card - Enhanced */}
+        {/* ========== بطاقة فضل الذكر ========== */}
         {azkar.virtue_ar && (
-          <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.virtueCard}>
+          <Animated.View 
+            entering={FadeInDown.delay(150).springify()} 
+            style={styles.virtueCard}
+          >
+            {/* العنوان */}
             <View style={[styles.virtueHeader, isRTL && styles.rowRTL]}>
               <View style={styles.virtueIconBox}>
-                <Ionicons name="star" size={22} color={THEME.colors.gold} />
+                <Ionicons name="star" size={18} color={THEME.colors.gold} />
               </View>
               <View style={styles.virtueHeaderText}>
                 <Text style={styles.virtueTitle}>{t('azkar.virtue')}</Text>
@@ -262,16 +276,17 @@ export default function AzkarDetailScreen() {
               />
             </View>
             
+            {/* نص الفضل - قابل للتمرير */}
             <ScrollView 
-              style={styles.virtueTextScroll}
+              style={[styles.virtueTextScroll, { maxHeight: getVirtueMaxHeight(azkar.virtue_ar) }]}
               nestedScrollEnabled={true}
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={true}
             >
               <Text style={[styles.virtueText, isRTL && styles.textRTL]}>
                 {azkar.virtue_ar}
               </Text>
               
-              {/* Virtue Translation */}
+              {/* ترجمة الفضل */}
               {currentLanguage?.code !== 'ar' && azkar.virtue_en && (
                 <View style={styles.virtueTranslationBox}>
                   <Text style={styles.virtueTranslationText}>
@@ -283,92 +298,99 @@ export default function AzkarDetailScreen() {
           </Animated.View>
         )}
 
-        {/* Reference Card */}
+        {/* ========== بطاقة الترجمة (للغات غير العربية) ========== */}
+        {currentLanguage?.code !== 'ar' && azkar.translation_en && (
+          <Animated.View 
+            entering={FadeInDown.delay(200).springify()} 
+            style={styles.translationCard}
+          >
+            <View style={[styles.translationHeader, isRTL && styles.rowRTL]}>
+              <Ionicons name="language" size={16} color={THEME.colors.primary} />
+              <Text style={styles.translationLabel}>{t('azkar.translation')}</Text>
+              <View style={{ flex: 1 }} />
+              <ListenButton
+                text={azkar.translation_en}
+                language={currentLanguage?.code || 'en'}
+                size="small"
+                showLabel={false}
+              />
+            </View>
+            <Text style={styles.translationText}>{azkar.translation_en}</Text>
+          </Animated.View>
+        )}
+
+        {/* ========== بطاقة المرجع - بسيطة ========== */}
         {azkar.reference_ar && (
-          <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.referenceCard}>
+          <Animated.View 
+            entering={FadeInDown.delay(250).springify()} 
+            style={styles.referenceCard}
+          >
             <View style={[styles.referenceContent, isRTL && styles.rowRTL]}>
-              <View style={styles.referenceIconBox}>
-                <Ionicons name="book" size={18} color={THEME.colors.primary} />
-              </View>
-              <View style={styles.referenceTextBox}>
-                <Text style={styles.referenceLabel}>{t('azkar.reference')}</Text>
-                <Text style={[styles.referenceText, isRTL && styles.textRTL]}>
-                  {azkar.reference_ar}
-                </Text>
-              </View>
+              <Ionicons name="book-outline" size={14} color={THEME.colors.textMuted} />
+              <Text style={styles.referenceLabel}>{t('azkar.reference')}:</Text>
+              <Text style={[styles.referenceText, isRTL && styles.textRTL]}>
+                {azkar.reference_ar}
+              </Text>
             </View>
           </Animated.View>
         )}
+
+        {/* مساحة إضافية للأزرار الثابتة */}
+        <View style={{ height: 140 }} />
       </ScrollView>
 
-      {/* Fixed Bottom Section */}
-      <View style={[styles.bottomSection, { paddingBottom: insets.bottom + 16 }]}>
-        {/* Progress Bar */}
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
+      {/* ========== الأزرار الثابتة في الأسفل ========== */}
+      <View style={[styles.fixedBottomButtons, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        {/* شريط التقدم الصغير */}
+        <View style={styles.bottomProgressBar}>
+          <View style={styles.bottomProgressBg}>
             <LinearGradient
               colors={isCompleted ? THEME.gradients.gold : THEME.gradients.primary}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={[styles.progressFill, { width: `${progress}%` }]}
+              style={[styles.bottomProgressFill, { width: `${Math.min(progress, 100)}%` }]}
             />
           </View>
-          <Text style={[styles.progressText, isCompleted && styles.completedText]}>
+          <Text style={[styles.bottomProgressText, isCompleted && { color: THEME.colors.gold }]}>
             {count}/{azkar.repeat_count}
           </Text>
         </View>
 
-        {/* Action Buttons Row */}
+        {/* صف الأزرار */}
         <View style={[styles.buttonsRow, isRTL && styles.rowRTL]}>
-          {/* Reset Button */}
+          {/* زر باللمس */}
           <Pressable
-            style={({ pressed }) => [styles.resetButton, pressed && styles.buttonPressed]}
-            onPress={handleReset}
-          >
-            <Ionicons name="refresh" size={22} color={THEME.colors.textMuted} />
-          </Pressable>
-
-          {/* Main Count Button */}
-          <Pressable
-            style={({ pressed }) => [pressed && { transform: [{ scale: 0.95 }] }]}
+            style={({ pressed }) => [styles.touchButton, pressed && styles.buttonPressed]}
             onPress={handleCount}
           >
             <LinearGradient
               colors={isCompleted ? THEME.gradients.gold : THEME.gradients.primary}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.mainCountButton}
+              style={styles.touchButtonGradient}
             >
-              <Text style={styles.mainCountButtonText}>{t('azkar.count')}</Text>
-              <Ionicons name="add-circle" size={26} color="#FFFFFF" />
+              <Ionicons name="hand-left" size={20} color="#FFF" />
+              <Text style={styles.touchButtonText}>{t('azkar.touch')}</Text>
             </LinearGradient>
           </Pressable>
 
-          {/* Voice Button */}
+          {/* زر بالصوت */}
           <Pressable
             style={({ pressed }) => [styles.voiceButton, pressed && styles.buttonPressed]}
             onPress={() => router.push('/tasbeeh/voice' as any)}
           >
-            <Ionicons name="mic" size={22} color={THEME.colors.gold} />
+            <View style={styles.voiceButtonInner}>
+              <Ionicons name="mic" size={20} color={THEME.colors.gold} />
+              <Text style={styles.voiceButtonText}>{t('azkar.voice')}</Text>
+            </View>
           </Pressable>
-        </View>
 
-        {/* Secondary Actions */}
-        <View style={[styles.secondaryActions, isRTL && styles.rowRTL]}>
+          {/* زر إعادة التعيين */}
           <Pressable
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
-            onPress={() => router.push('/tasbeeh/voice' as any)}
+            style={({ pressed }) => [styles.resetButton, pressed && styles.buttonPressed]}
+            onPress={handleReset}
           >
-            <Ionicons name="mic-outline" size={20} color={THEME.colors.textSecondary} />
-            <Text style={styles.secondaryButtonText}>{t('home.voice')}</Text>
-          </Pressable>
-          
-          <Pressable
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
-            onPress={() => router.push('/tasbeeh/touch' as any)}
-          >
-            <Ionicons name="hand-left-outline" size={20} color={THEME.colors.textSecondary} />
-            <Text style={styles.secondaryButtonText}>{t('home.touch')}</Text>
+            <Ionicons name="refresh" size={20} color={THEME.colors.textMuted} />
           </Pressable>
         </View>
       </View>
@@ -381,11 +403,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
+  
+  // ========== HEADER ==========
   header: {
     paddingHorizontal: THEME.spacing.md,
-    paddingBottom: THEME.spacing.md,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingBottom: THEME.spacing.sm,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   headerContent: {
     flexDirection: 'row',
@@ -396,9 +420,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
   },
   headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -408,65 +432,79 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
   },
   repeatBadgeHeader: {
     backgroundColor: 'rgba(255,255,255,0.25)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginTop: 3,
   },
   repeatBadgeText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
   },
   headerPlaceholder: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
   },
   buttonPressed: {
     opacity: 0.7,
     transform: [{ scale: 0.95 }],
   },
   
-  // Stats Row
-  statsRow: {
+  // ========== منطقة العداد المضغوطة ==========
+  compactCounter: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 16,
-    padding: 12,
-    marginTop: THEME.spacing.md,
-    justifyContent: 'space-around',
+    borderRadius: 12,
+    padding: 10,
+    marginTop: THEME.spacing.sm,
     alignItems: 'center',
   },
-  statItem: {
+  counterItem: {
     alignItems: 'center',
-    flex: 1,
+    minWidth: 45,
   },
-  statValue: {
-    fontSize: 22,
+  counterValue: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  statLabel: {
-    fontSize: 11,
+  counterLabel: {
+    fontSize: 9,
     color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
+    marginTop: 1,
   },
-  statDivider: {
-    width: 1,
-    height: 30,
+  progressBarWrapper: {
+    flex: 1,
+    marginHorizontal: 10,
+  },
+  progressBarBg: {
+    height: 6,
     backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  counterDivider: {
+    width: 1,
+    height: 25,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginHorizontal: 10,
   },
   completedText: {
     color: THEME.colors.gold,
   },
   
-  // Loading
+  // ========== Loading ==========
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -478,105 +516,58 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
   },
   
-  // Scroll Content
-  scrollView: {
+  // ========== المحتوى الرئيسي ==========
+  mainScrollView: {
     flex: 1,
   },
-  scrollContent: {
+  mainScrollContent: {
     padding: THEME.spacing.md,
     paddingTop: THEME.spacing.md,
   },
   
-  // Main Card
-  mainCard: {
+  // ========== بطاقة النص الأساسي ==========
+  mainTextCard: {
     backgroundColor: THEME.colors.surface,
-    borderRadius: 20,
-    padding: THEME.spacing.lg,
+    borderRadius: 16,
     marginBottom: THEME.spacing.md,
-    ...THEME.shadows.medium,
+    ...THEME.shadows.small,
   },
-  listenRow: {
+  listenButtonRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
     marginBottom: THEME.spacing.sm,
+  },
+  arabicText: {
+    color: THEME.colors.text,
+    textAlign: 'center',
+    fontFamily: 'System',
   },
   rowRTL: {
     flexDirection: 'row-reverse',
-  },
-  arabicTextScroll: {
-    maxHeight: 250,
-  },
-  arabicText: {
-    fontSize: 24,
-    lineHeight: 44,
-    color: THEME.colors.text,
-    textAlign: 'right',
-    fontFamily: 'System',
-  },
-  transliterationBox: {
-    backgroundColor: THEME.colors.background,
-    borderRadius: 12,
-    padding: THEME.spacing.md,
-    marginTop: THEME.spacing.md,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: THEME.spacing.sm,
-    gap: 8,
-  },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: THEME.colors.textMuted,
-    textTransform: 'uppercase',
-  },
-  transliterationText: {
-    fontSize: 16,
-    color: THEME.colors.textSecondary,
-    fontStyle: 'italic',
-    lineHeight: 26,
-  },
-  translationBox: {
-    backgroundColor: THEME.colors.primary + '08',
-    borderRadius: 12,
-    padding: THEME.spacing.md,
-    borderLeftWidth: 3,
-    borderLeftColor: THEME.colors.primary,
-    marginTop: THEME.spacing.md,
-  },
-  translationScroll: {
-    maxHeight: 150,
-  },
-  translationText: {
-    fontSize: 16,
-    color: THEME.colors.text,
-    lineHeight: 26,
   },
   textRTL: {
     textAlign: 'right',
   },
   
-  // Virtue Card - Enhanced
+  // ========== بطاقة فضل الذكر ==========
   virtueCard: {
-    backgroundColor: '#F0FDF4', // Light green background
-    borderRadius: 20,
-    padding: THEME.spacing.lg,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 14,
+    padding: 14,
     marginBottom: THEME.spacing.md,
-    borderWidth: 1,
-    borderColor: '#BBF7D0', // Green border
-    ...THEME.shadows.small,
+    borderWidth: 0.5,
+    borderColor: '#81C784',
   },
   virtueHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: THEME.spacing.md,
-    gap: 12,
+    marginBottom: THEME.spacing.sm,
+    gap: 8,
   },
   virtueIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     backgroundColor: THEME.colors.gold + '20',
     alignItems: 'center',
     justifyContent: 'center',
@@ -585,21 +576,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   virtueTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#166534', // Dark green
+    color: '#2E7D5E',
   },
   virtueSubtitle: {
-    fontSize: 12,
-    color: '#15803D', // Medium green
-    marginTop: 2,
+    fontSize: 10,
+    color: '#15803D',
+    marginTop: 1,
   },
   virtueTextScroll: {
-    maxHeight: 150,
+    // maxHeight يتم تحديده ديناميكياً
   },
   virtueText: {
-    fontSize: 16,
-    lineHeight: 28,
+    fontSize: 14,
+    lineHeight: 24,
     color: '#166534',
     textAlign: 'right',
   },
@@ -610,141 +601,150 @@ const styles = StyleSheet.create({
     borderTopColor: '#BBF7D0',
   },
   virtueTranslationText: {
-    fontSize: 14,
-    lineHeight: 24,
+    fontSize: 12,
+    lineHeight: 20,
     color: '#15803D',
     fontStyle: 'italic',
   },
   
-  // Reference Card
+  // ========== بطاقة الترجمة ==========
+  translationCard: {
+    backgroundColor: THEME.colors.primary + '08',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: THEME.spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: THEME.colors.primary,
+  },
+  translationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  translationLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: THEME.colors.primary,
+    textTransform: 'uppercase',
+  },
+  translationText: {
+    fontSize: 14,
+    color: THEME.colors.text,
+    lineHeight: 22,
+  },
+  
+  // ========== بطاقة المرجع ==========
   referenceCard: {
     backgroundColor: THEME.colors.surface,
-    borderRadius: 16,
-    padding: THEME.spacing.md,
-    marginBottom: THEME.spacing.md,
-    ...THEME.shadows.small,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: THEME.spacing.sm,
   },
   referenceContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  referenceIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: THEME.colors.primary + '15',
-    alignItems: 'center',
     justifyContent: 'center',
-  },
-  referenceTextBox: {
-    flex: 1,
+    gap: 6,
   },
   referenceLabel: {
     fontSize: 11,
-    fontWeight: '600',
     color: THEME.colors.textMuted,
-    textTransform: 'uppercase',
-    marginBottom: 2,
   },
   referenceText: {
-    fontSize: 14,
-    color: THEME.colors.text,
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    fontStyle: 'italic',
   },
   
-  // Bottom Section - Fixed
-  bottomSection: {
+  // ========== الأزرار الثابتة ==========
+  fixedBottomButtons: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: THEME.colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: THEME.spacing.lg,
-    paddingTop: THEME.spacing.md,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: THEME.spacing.md,
+    paddingTop: THEME.spacing.sm,
     ...THEME.shadows.large,
   },
-  progressContainer: {
-    marginBottom: THEME.spacing.md,
+  bottomProgressBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: THEME.spacing.sm,
+    gap: 10,
   },
-  progressBar: {
-    height: 10,
+  bottomProgressBg: {
+    flex: 1,
+    height: 6,
     backgroundColor: THEME.colors.border,
-    borderRadius: 5,
+    borderRadius: 3,
     overflow: 'hidden',
-    marginBottom: 6,
   },
-  progressFill: {
+  bottomProgressFill: {
     height: '100%',
-    borderRadius: 5,
+    borderRadius: 3,
   },
-  progressText: {
-    fontSize: 13,
-    color: THEME.colors.textSecondary,
-    textAlign: 'center',
+  bottomProgressText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: THEME.colors.textSecondary,
+    minWidth: 40,
+    textAlign: 'center',
   },
-  
-  // Buttons Row
   buttonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+  },
+  touchButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  touchButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: THEME.spacing.md,
-    marginBottom: THEME.spacing.sm,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  touchButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  voiceButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  voiceButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
+    backgroundColor: THEME.colors.gold + '15',
+    borderWidth: 1,
+    borderColor: THEME.colors.gold + '30',
+    borderRadius: 12,
+  },
+  voiceButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: THEME.colors.gold,
   },
   resetButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     backgroundColor: THEME.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: THEME.colors.border,
-  },
-  mainCountButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    borderRadius: 30,
-    minWidth: SCREEN_WIDTH * 0.5,
-    justifyContent: 'center',
-  },
-  mainCountButtonText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  voiceButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: THEME.colors.gold + '15',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: THEME.colors.gold + '30',
-  },
-  
-  // Secondary Actions
-  secondaryActions: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: THEME.spacing.lg,
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  secondaryButtonText: {
-    fontSize: 13,
-    color: THEME.colors.textSecondary,
   },
 });
