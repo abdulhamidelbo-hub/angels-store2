@@ -70,7 +70,8 @@
   "azkar": {
     "title": "الأذكار",
     "repeatCount": "عدد التكرار",
-    "virtue": "الفضل",
+    "virtue": "فضل الذكر",
+    "virtueDescription": "من السنة النبوية",
     "reference": "المرجع",
     "transliteration": "النطق",
     "translation": "الترجمة",
@@ -91,7 +92,10 @@
     "listening": "يستمع...",
     "stopListening": "إيقاف الاستماع",
     "resetsIn": "يعود خلال",
-    "completedSuccess": "تم الإكمال بنجاح"
+    "completedSuccess": "تم الإكمال بنجاح",
+    "current": "الحالي",
+    "total": "المطلوب",
+    "progress": "التقدم"
   },
   "events": {
     "title": "المناسبات الدينية",

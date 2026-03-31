@@ -6,12 +6,13 @@ import {
   ScrollView,
   Pressable,
   StatusBar,
+  Dimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import { THEME } from '../../src/constants/theme';
@@ -20,6 +21,8 @@ import { apiService } from '../../src/services/api';
 import { Azkar } from '../../src/types';
 import { ListenButton } from '../../src/components/ui';
 import { useApp } from '../../src/contexts/AppContext';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function AzkarDetailScreen() {
   const router = useRouter();
@@ -97,6 +100,7 @@ export default function AzkarDetailScreen() {
           </View>
         </LinearGradient>
         <View style={styles.loadingContainer}>
+          <Ionicons name="hourglass" size={48} color={THEME.colors.primary} />
           <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       </View>
@@ -104,6 +108,7 @@ export default function AzkarDetailScreen() {
   }
 
   const progress = azkar.repeat_count > 0 ? (count / azkar.repeat_count) * 100 : 0;
+  const isCompleted = count >= azkar.repeat_count;
 
   return (
     <View style={styles.container}>
@@ -126,7 +131,14 @@ export default function AzkarDetailScreen() {
           >
             <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={24} color="#FFFFFF" />
           </Pressable>
-          <Text style={styles.headerTitle}>{t('azkar.detail')}</Text>
+          
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>{t('azkar.detail')}</Text>
+            <View style={styles.repeatBadgeHeader}>
+              <Text style={styles.repeatBadgeText}>×{azkar.repeat_count}</Text>
+            </View>
+          </View>
+          
           <Pressable
             style={({ pressed }) => [styles.headerButton, pressed && styles.buttonPressed]}
             onPress={toggleFavorite}
@@ -138,34 +150,57 @@ export default function AzkarDetailScreen() {
             />
           </Pressable>
         </View>
+
+        {/* Stats Row in Header */}
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{count}</Text>
+            <Text style={styles.statLabel}>{t('azkar.current')}</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{azkar.repeat_count}</Text>
+            <Text style={styles.statLabel}>{t('azkar.total')}</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, isCompleted && styles.completedText]}>
+              {Math.round(progress)}%
+            </Text>
+            <Text style={styles.statLabel}>{t('azkar.progress')}</Text>
+          </View>
+        </View>
       </LinearGradient>
 
+      {/* Main Content - Scrollable */}
       <ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 140 } // Space for bottom buttons
+        ]}
       >
         {/* Arabic Text Card */}
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.mainCard}>
-          {/* Repeat Badge */}
-          <View style={[styles.repeatRow, isRTL && styles.rowRTL]}>
-            <LinearGradient
-              colors={THEME.gradients.gold}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.repeatBadge}
-            >
-              <Text style={styles.repeatText}>×{azkar.repeat_count}</Text>
-            </LinearGradient>
+          {/* Listen Button Row */}
+          <View style={[styles.listenRow, isRTL && styles.rowRTL]}>
             <ListenButton
               text={azkar.arabic_text}
               language="ar"
               size="medium"
-              showLabel={false}
+              showLabel={true}
             />
           </View>
 
-          {/* Arabic Text */}
-          <Text style={styles.arabicText}>{azkar.arabic_text}</Text>
+          {/* Arabic Text - Scrollable if needed */}
+          <ScrollView 
+            style={styles.arabicTextScroll}
+            nestedScrollEnabled={true}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.arabicText}>{azkar.arabic_text}</Text>
+          </ScrollView>
 
           {/* Transliteration */}
           {azkar.transliteration && (
@@ -194,66 +229,30 @@ export default function AzkarDetailScreen() {
                   showLabel={false}
                 />
               </View>
-              <Text style={[styles.translationText, isRTL && styles.textRTL]}>
-                {azkar.translation_en}
-              </Text>
+              <ScrollView 
+                style={styles.translationScroll}
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={false}
+              >
+                <Text style={styles.translationText}>
+                  {azkar.translation_en}
+                </Text>
+              </ScrollView>
             </View>
           )}
         </Animated.View>
 
-        {/* Counter Section */}
-        <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.counterCard}>
-          <Text style={styles.counterTitle}>{t('azkar.counter')}</Text>
-          
-          {/* Progress Bar */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <LinearGradient
-                colors={THEME.gradients.primary}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.progressFill, { width: `${progress}%` }]}
-              />
-            </View>
-            <Text style={styles.progressText}>{count}/{azkar.repeat_count}</Text>
-          </View>
-
-          {/* Counter Buttons */}
-          <View style={[styles.counterButtons, isRTL && styles.rowRTL]}>
-            <Pressable
-              style={({ pressed }) => [styles.resetButton, pressed && styles.buttonPressed]}
-              onPress={handleReset}
-            >
-              <Ionicons name="refresh" size={20} color={THEME.colors.textMuted} />
-              <Text style={styles.resetText}>{t('azkar.reset')}</Text>
-            </Pressable>
-            
-            <Pressable
-              style={({ pressed }) => [pressed && { transform: [{ scale: 0.95 }] }]}
-              onPress={handleCount}
-            >
-              <LinearGradient
-                colors={THEME.gradients.primary}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.countButton}
-              >
-                <Text style={styles.countButtonText}>{t('azkar.count')}</Text>
-                <Ionicons name="add-circle" size={24} color="#FFFFFF" />
-              </LinearGradient>
-            </Pressable>
-          </View>
-        </Animated.View>
-
-        {/* Virtue Card */}
+        {/* Virtue Card - Enhanced */}
         {azkar.virtue_ar && (
-          <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.infoCard}>
-            <View style={[styles.infoHeader, isRTL && styles.rowRTL]}>
-              <View style={[styles.infoIconBox, { backgroundColor: THEME.colors.gold + '20' }]}>
-                <Ionicons name="star" size={20} color={THEME.colors.gold} />
+          <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.virtueCard}>
+            <View style={[styles.virtueHeader, isRTL && styles.rowRTL]}>
+              <View style={styles.virtueIconBox}>
+                <Ionicons name="star" size={22} color={THEME.colors.gold} />
               </View>
-              <Text style={styles.infoTitle}>{t('azkar.virtue')}</Text>
-              <View style={{ flex: 1 }} />
+              <View style={styles.virtueHeaderText}>
+                <Text style={styles.virtueTitle}>{t('azkar.virtue')}</Text>
+                <Text style={styles.virtueSubtitle}>{t('azkar.virtueDescription')}</Text>
+              </View>
               <ListenButton
                 text={azkar.virtue_ar}
                 language="ar"
@@ -262,57 +261,117 @@ export default function AzkarDetailScreen() {
                 variant="secondary"
               />
             </View>
-            <Text style={[styles.infoText, isRTL && styles.textRTL]}>{azkar.virtue_ar}</Text>
             
-            {/* Virtue Translation */}
-            {currentLanguage?.code !== 'ar' && azkar.virtue_en && (
-              <Text style={[styles.infoTextTranslation, isRTL && styles.textRTL]}>
-                {azkar.virtue_en}
+            <ScrollView 
+              style={styles.virtueTextScroll}
+              nestedScrollEnabled={true}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={[styles.virtueText, isRTL && styles.textRTL]}>
+                {azkar.virtue_ar}
               </Text>
-            )}
+              
+              {/* Virtue Translation */}
+              {currentLanguage?.code !== 'ar' && azkar.virtue_en && (
+                <View style={styles.virtueTranslationBox}>
+                  <Text style={styles.virtueTranslationText}>
+                    {azkar.virtue_en}
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
           </Animated.View>
         )}
 
         {/* Reference Card */}
         {azkar.reference_ar && (
-          <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.infoCard}>
-            <View style={[styles.infoHeader, isRTL && styles.rowRTL]}>
-              <View style={[styles.infoIconBox, { backgroundColor: THEME.colors.primary + '20' }]}>
-                <Ionicons name="book" size={20} color={THEME.colors.primary} />
+          <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.referenceCard}>
+            <View style={[styles.referenceContent, isRTL && styles.rowRTL]}>
+              <View style={styles.referenceIconBox}>
+                <Ionicons name="book" size={18} color={THEME.colors.primary} />
               </View>
-              <Text style={styles.infoTitle}>{t('azkar.reference')}</Text>
+              <View style={styles.referenceTextBox}>
+                <Text style={styles.referenceLabel}>{t('azkar.reference')}</Text>
+                <Text style={[styles.referenceText, isRTL && styles.textRTL]}>
+                  {azkar.reference_ar}
+                </Text>
+              </View>
             </View>
-            <Text style={[styles.infoText, isRTL && styles.textRTL]}>{azkar.reference_ar}</Text>
-            
-            {/* Reference Translation */}
-            {currentLanguage?.code !== 'ar' && azkar.reference_en && (
-              <Text style={[styles.infoTextTranslation, isRTL && styles.textRTL]}>
-                {azkar.reference_en}
-              </Text>
-            )}
           </Animated.View>
         )}
+      </ScrollView>
 
-        {/* Action Buttons */}
-        <Animated.View entering={FadeInDown.delay(500).springify()} style={[styles.actionsRow, isRTL && styles.rowRTL]}>
+      {/* Fixed Bottom Section */}
+      <View style={[styles.bottomSection, { paddingBottom: insets.bottom + 16 }]}>
+        {/* Progress Bar */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <LinearGradient
+              colors={isCompleted ? THEME.gradients.gold : THEME.gradients.primary}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.progressFill, { width: `${progress}%` }]}
+            />
+          </View>
+          <Text style={[styles.progressText, isCompleted && styles.completedText]}>
+            {count}/{azkar.repeat_count}
+          </Text>
+        </View>
+
+        {/* Action Buttons Row */}
+        <View style={[styles.buttonsRow, isRTL && styles.rowRTL]}>
+          {/* Reset Button */}
           <Pressable
-            style={({ pressed }) => [styles.actionButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [styles.resetButton, pressed && styles.buttonPressed]}
+            onPress={handleReset}
+          >
+            <Ionicons name="refresh" size={22} color={THEME.colors.textMuted} />
+          </Pressable>
+
+          {/* Main Count Button */}
+          <Pressable
+            style={({ pressed }) => [pressed && { transform: [{ scale: 0.95 }] }]}
+            onPress={handleCount}
+          >
+            <LinearGradient
+              colors={isCompleted ? THEME.gradients.gold : THEME.gradients.primary}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.mainCountButton}
+            >
+              <Text style={styles.mainCountButtonText}>{t('azkar.count')}</Text>
+              <Ionicons name="add-circle" size={26} color="#FFFFFF" />
+            </LinearGradient>
+          </Pressable>
+
+          {/* Voice Button */}
+          <Pressable
+            style={({ pressed }) => [styles.voiceButton, pressed && styles.buttonPressed]}
             onPress={() => router.push('/tasbeeh/voice' as any)}
           >
-            <Ionicons name="mic" size={24} color={THEME.colors.gold} />
-            <Text style={styles.actionText}>{t('home.voice')}</Text>
+            <Ionicons name="mic" size={22} color={THEME.colors.gold} />
           </Pressable>
+        </View>
+
+        {/* Secondary Actions */}
+        <View style={[styles.secondaryActions, isRTL && styles.rowRTL]}>
           <Pressable
-            style={({ pressed }) => [styles.actionButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
+            onPress={() => router.push('/tasbeeh/voice' as any)}
+          >
+            <Ionicons name="mic-outline" size={20} color={THEME.colors.textSecondary} />
+            <Text style={styles.secondaryButtonText}>{t('home.voice')}</Text>
+          </Pressable>
+          
+          <Pressable
+            style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
             onPress={() => router.push('/tasbeeh/touch' as any)}
           >
-            <Ionicons name="hand-left" size={24} color={THEME.colors.primary} />
-            <Text style={styles.actionText}>{t('home.touch')}</Text>
+            <Ionicons name="hand-left-outline" size={20} color={THEME.colors.textSecondary} />
+            <Text style={styles.secondaryButtonText}>{t('home.touch')}</Text>
           </Pressable>
-        </Animated.View>
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
+        </View>
+      </View>
     </View>
   );
 }
@@ -324,9 +383,9 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: THEME.spacing.md,
-    paddingBottom: THEME.spacing.lg,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    paddingBottom: THEME.spacing.md,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   headerContent: {
     flexDirection: 'row',
@@ -344,8 +403,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  repeatBadgeHeader: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  repeatBadgeText: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -357,58 +432,92 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     transform: [{ scale: 0.95 }],
   },
+  
+  // Stats Row
+  statsRow: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
+    padding: 12,
+    marginTop: THEME.spacing.md,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  completedText: {
+    color: THEME.colors.gold,
+  },
+  
+  // Loading
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 16,
   },
   loadingText: {
     fontSize: 16,
     color: THEME.colors.textSecondary,
   },
+  
+  // Scroll Content
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
     padding: THEME.spacing.md,
-    paddingTop: THEME.spacing.lg,
-    paddingBottom: 100,
+    paddingTop: THEME.spacing.md,
   },
+  
+  // Main Card
   mainCard: {
     backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.borderRadius.lg,
+    borderRadius: 20,
     padding: THEME.spacing.lg,
     marginBottom: THEME.spacing.md,
     ...THEME.shadows.medium,
   },
-  repeatRow: {
+  listenRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: THEME.spacing.md,
+    justifyContent: 'flex-end',
+    marginBottom: THEME.spacing.sm,
   },
   rowRTL: {
     flexDirection: 'row-reverse',
   },
-  repeatBadge: {
-    borderRadius: THEME.borderRadius.md,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  repeatText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  arabicTextScroll: {
+    maxHeight: 250,
   },
   arabicText: {
-    fontSize: 26,
-    lineHeight: 48,
+    fontSize: 24,
+    lineHeight: 44,
     color: THEME.colors.text,
     textAlign: 'right',
-    marginBottom: THEME.spacing.md,
+    fontFamily: 'System',
   },
   transliterationBox: {
     backgroundColor: THEME.colors.background,
-    borderRadius: THEME.borderRadius.md,
+    borderRadius: 12,
     padding: THEME.spacing.md,
-    marginBottom: THEME.spacing.md,
+    marginTop: THEME.spacing.md,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -430,10 +539,14 @@ const styles = StyleSheet.create({
   },
   translationBox: {
     backgroundColor: THEME.colors.primary + '08',
-    borderRadius: THEME.borderRadius.md,
+    borderRadius: 12,
     padding: THEME.spacing.md,
     borderLeftWidth: 3,
     borderLeftColor: THEME.colors.primary,
+    marginTop: THEME.spacing.md,
+  },
+  translationScroll: {
+    maxHeight: 150,
   },
   translationText: {
     fontSize: 16,
@@ -443,125 +556,195 @@ const styles = StyleSheet.create({
   textRTL: {
     textAlign: 'right',
   },
-  counterCard: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.borderRadius.lg,
+  
+  // Virtue Card - Enhanced
+  virtueCard: {
+    backgroundColor: '#F0FDF4', // Light green background
+    borderRadius: 20,
     padding: THEME.spacing.lg,
     marginBottom: THEME.spacing.md,
-    ...THEME.shadows.medium,
-  },
-  counterTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: THEME.colors.text,
-    textAlign: 'center',
-    marginBottom: THEME.spacing.md,
-  },
-  progressContainer: {
-    marginBottom: THEME.spacing.md,
-  },
-  progressBar: {
-    height: 12,
-    backgroundColor: THEME.colors.border,
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 6,
-  },
-  progressText: {
-    fontSize: 14,
-    color: THEME.colors.textSecondary,
-    textAlign: 'center',
-  },
-  counterButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  resetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  resetText: {
-    fontSize: 14,
-    color: THEME.colors.textMuted,
-  },
-  countButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: THEME.borderRadius.md,
-  },
-  countButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  infoCard: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.borderRadius.lg,
-    padding: THEME.spacing.lg,
-    marginBottom: THEME.spacing.md,
+    borderWidth: 1,
+    borderColor: '#BBF7D0', // Green border
     ...THEME.shadows.small,
   },
-  infoHeader: {
+  virtueHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: THEME.spacing.md,
     gap: 12,
   },
-  infoIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  virtueIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: THEME.colors.gold + '20',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: THEME.colors.text,
+  virtueHeaderText: {
+    flex: 1,
   },
-  infoText: {
+  virtueTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#166534', // Dark green
+  },
+  virtueSubtitle: {
+    fontSize: 12,
+    color: '#15803D', // Medium green
+    marginTop: 2,
+  },
+  virtueTextScroll: {
+    maxHeight: 150,
+  },
+  virtueText: {
     fontSize: 16,
     lineHeight: 28,
-    color: THEME.colors.text,
+    color: '#166534',
     textAlign: 'right',
   },
-  infoTextTranslation: {
-    fontSize: 14,
-    lineHeight: 24,
-    color: THEME.colors.textSecondary,
+  virtueTranslationBox: {
     marginTop: THEME.spacing.sm,
     paddingTop: THEME.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: THEME.colors.border,
+    borderTopColor: '#BBF7D0',
   },
-  actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: THEME.spacing.md,
+  virtueTranslationText: {
+    fontSize: 14,
+    lineHeight: 24,
+    color: '#15803D',
+    fontStyle: 'italic',
   },
-  actionButton: {
-    flex: 1,
+  
+  // Reference Card
+  referenceCard: {
     backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.borderRadius.lg,
+    borderRadius: 16,
     padding: THEME.spacing.md,
-    alignItems: 'center',
+    marginBottom: THEME.spacing.md,
     ...THEME.shadows.small,
   },
-  actionText: {
-    fontSize: 14,
+  referenceContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  referenceIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: THEME.colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  referenceTextBox: {
+    flex: 1,
+  },
+  referenceLabel: {
+    fontSize: 11,
     fontWeight: '600',
+    color: THEME.colors.textMuted,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  referenceText: {
+    fontSize: 14,
     color: THEME.colors.text,
-    marginTop: 8,
+  },
+  
+  // Bottom Section - Fixed
+  bottomSection: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: THEME.colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: THEME.spacing.lg,
+    paddingTop: THEME.spacing.md,
+    ...THEME.shadows.large,
+  },
+  progressContainer: {
+    marginBottom: THEME.spacing.md,
+  },
+  progressBar: {
+    height: 10,
+    backgroundColor: THEME.colors.border,
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  progressText: {
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  
+  // Buttons Row
+  buttonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: THEME.spacing.md,
+    marginBottom: THEME.spacing.sm,
+  },
+  resetButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: THEME.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  mainCountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 30,
+    minWidth: SCREEN_WIDTH * 0.5,
+    justifyContent: 'center',
+  },
+  mainCountButtonText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  voiceButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: THEME.colors.gold + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: THEME.colors.gold + '30',
+  },
+  
+  // Secondary Actions
+  secondaryActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: THEME.spacing.lg,
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  secondaryButtonText: {
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
   },
 });

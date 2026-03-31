@@ -71,6 +71,7 @@
     "title": "Adhkar",
     "repeatCount": "Repeat Count",
     "virtue": "Virtue",
+    "virtueDescription": "From Prophetic Sunnah",
     "reference": "Reference",
     "transliteration": "Transliteration",
     "translation": "Translation",
@@ -91,7 +92,10 @@
     "listening": "Listening...",
     "stopListening": "Stop Listening",
     "resetsIn": "Resets in",
-    "completedSuccess": "Completed successfully"
+    "completedSuccess": "Completed successfully",
+    "current": "Current",
+    "total": "Target",
+    "progress": "Progress"
   },
   "events": {
     "title": "Islamic Events",
