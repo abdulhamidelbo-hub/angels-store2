@@ -24,6 +24,36 @@ import { useApp } from '../../src/contexts/AppContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// دالة لجلب نص الفضل حسب اللغة المختارة
+const getVirtueByLanguage = (azkar: Azkar | null, languageCode: string): string => {
+  if (!azkar) return '';
+  
+  // جلب الترجمة حسب اللغة مع fallback للعربية
+  switch (languageCode) {
+    case 'fr':
+      return (azkar as any).virtue_fr || azkar.virtue_en || azkar.virtue_ar || '';
+    case 'tr':
+      return (azkar as any).virtue_tr || azkar.virtue_en || azkar.virtue_ar || '';
+    case 'ur':
+      return (azkar as any).virtue_ur || azkar.virtue_ar || '';
+    case 'id':
+      return (azkar as any).virtue_id || azkar.virtue_en || azkar.virtue_ar || '';
+    case 'bn':
+      return (azkar as any).virtue_bn || azkar.virtue_en || azkar.virtue_ar || '';
+    case 'ms':
+      return (azkar as any).virtue_ms || azkar.virtue_en || azkar.virtue_ar || '';
+    case 'sw':
+      return (azkar as any).virtue_sw || azkar.virtue_en || azkar.virtue_ar || '';
+    case 'ha':
+      return (azkar as any).virtue_ha || azkar.virtue_en || azkar.virtue_ar || '';
+    case 'en':
+      return azkar.virtue_en || azkar.virtue_ar || '';
+    case 'ar':
+    default:
+      return azkar.virtue_ar || '';
+  }
+};
+
 export default function AzkarDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -268,7 +298,7 @@ export default function AzkarDetailScreen() {
                 <Text style={styles.virtueSubtitle}>{t('azkar.virtueDescription')}</Text>
               </View>
               <ListenButton
-                text={currentLanguage?.code === 'ar' ? azkar.virtue_ar : (azkar.virtue_en || azkar.virtue_ar)}
+                text={getVirtueByLanguage(azkar, currentLanguage?.code || 'ar')}
                 language={currentLanguage?.code || 'ar'}
                 size="small"
                 showLabel={false}
@@ -282,15 +312,14 @@ export default function AzkarDetailScreen() {
               nestedScrollEnabled={true}
               showsVerticalScrollIndicator={true}
             >
-              {/* إذا كانت اللغة عربية، يعرض النص العربي فقط */}
-              {currentLanguage?.code === 'ar' ? (
+              {/* عرض نص الفضل حسب اللغة المختارة */}
+              {currentLanguage?.code === 'ar' || currentLanguage?.code === 'ur' ? (
                 <Text style={[styles.virtueText, styles.textRTL]}>
-                  {azkar.virtue_ar}
+                  {getVirtueByLanguage(azkar, currentLanguage?.code || 'ar')}
                 </Text>
               ) : (
-                /* إذا كانت اللغة غير عربية، يعرض الترجمة (أو العربي إن لم توجد ترجمة) */
                 <Text style={styles.virtueTextLTR}>
-                  {azkar.virtue_en || azkar.virtue_ar}
+                  {getVirtueByLanguage(azkar, currentLanguage?.code || 'ar')}
                 </Text>
               )}
             </ScrollView>
