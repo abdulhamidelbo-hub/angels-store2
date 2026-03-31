@@ -2,124 +2,117 @@
 The user is building a comprehensive, ad-free Islamic mobile application named Adkar Al Muslim - No Ads 1. 
 **PRODUCT REQUIREMENTS:**
 1. **Core Features**: 14 Categories of Azkar, 15 Islamic Events, 3 Tasbeeh methods (Touch with haptics, Voice, AI Assistant).
-2. **Monetization**: Smart Exemption subscription system (/bin/bash.50/year) via RevenueCat, with a free exemption button.
-3. **Admin Dashboard**: Hidden dashboard accessed via 5-taps on the app logo in settings.
-4. **Massive UI/UX Redesign (COMPLETED)**: Premium design with gradients, shadows, haptic feedback, custom fonts (Cairo/Poppins), and smooth animations.
-5. **NEW MASSIVE REQUIREMENT (IN PROGRESS)**: 
-   - **Global Localization**: Support for 30+ languages using . Must support auto RTL/LTR switching.
-   - **Bilingual Display**: Show Arabic text with translated text directly underneath it. 
-   - **Transliteration**: Add romanized spelling of Arabic words to help non-Arabic speakers pronounce them.
-   - **Audio Playback**: Use  /  to play audio for the Arabic text, Translation, and Virtue of the Azkar.
-   - **Admin Updates**: Add Translation Management and Audio Upload capabilities to the Admin Dashboard.
+2. **Monetization**: Smart Exemption subscription system (/bin/bash.50/year) via RevenueCat.
+3. **Massive UI/UX Redesign & i18n**: Premium design, 30+ languages support (Arabic default), auto RTL/LTR, Transliteration, Audio Playback (TTS).
+4. **Smart Tasbeeh System**: Individual counters for each Zikr with progress bars, continuous voice recognition (press mic once and it keeps counting), 1-hour automatic reset timer for completed Azkar (Green -> Gold -> Reset), and auto-scroll/transition to the next Zikr.
+5. **Authentic Data**: Pre-populate the database with authentic, fully vocalized Arabic texts for all 14 categories based on established Islamic sources (Hisn Al-Muslim).
 
 **User's preferred language**: Arabic (العربية).
 **INSTRUCT NEXT AGENT: You MUST respond to the user exclusively in Arabic.**
 
 **what currently exists?** 
-A full-stack Expo + FastAPI + MongoDB app. The Admin dashboard is built and hidden. The UI/UX was recently completely overhauled and looks premium (verified via screenshots). The agent just started implementing the massive i18n (localization) and Audio playback requests. Basic context files (), translation JSONs, and a  have been created, but they are not fully wired into the UI components yet. The Expo server is currently failing to connect to the Ngrok tunnel.
+A full-stack Expo + FastAPI + MongoDB app. The app has full i18n support with Arabic as the default and working RTL/LTR switching. The DB schema supports languages, translations, and transliterations. The UI for the Smart Tasbeeh System is built: Azkar lists now show the actual Arabic text, individual progress bars, a touch button, and a voice button. Navigation to Azkar details works. The agent just started writing a Python script to seed the massive, authentic list of Azkar texts provided by the user.
 
 **Last working item**:
-- **Last item agent was working**: The agent was restarting the Expo Metro bundler after creating the foundational files for Localization (i18n) and Audio Playback (, , ). The Expo server failed to start due to an Ngrok tunnel timeout/error.
-- **Status**: IN PROGRESS / BLOCKED (Environment Issue)
+- **Last item agent was working**: The agent was creating a script () to seed the database with the complete, authentic text for all 14 categories of Azkar as explicitly requested by the user in Message 320. *Note: The user also requested a highly detailed project documentation document in Message 315 because they are pausing their subscription.*
+- **Status**: IN PROGRESS
 - **Agent Testing Done**: N
-- **Which testing method agent to use?**: screenshot tool (to verify RTL/LTR and language switching on the UI) and backend testing agent (once DB schema changes are made for translations).
+- **Which testing method agent to use?**: backend testing agent (to verify the DB seeding script works), manual testing by python/curl to verify endpoints, and screenshot tool for UI.
 - **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-  Issue 1: Expo Ngrok Tunnel Failure (P0)
-   - **Attempted fixes**: Agent tried clearing cache and restarting the expo server multiple times. It currently throws  and .
-   - **Next debug checklist**: Check  for any conflicting packages recently added, ensure no background processes are blocking ports, use troubleshoot_agent if the error persists.
-   - **Why fix this issue and what will be achieved with the fix?**: Blocker for all frontend development and previewing.
-   - **Status**: BLOCKED
-   - **Is recurring issue?**: Y
-   - **Should Test frontend/backend/both after fix?**: Frontend (Screenshot tool).
-   - **Blocked on other issue**: None.
-
-  Issue 2: Stats screen text invisible on Web Preview (P2)
-   - **Attempted fixes**: Agent tried changing  to a standard  with background color.
-   - **Next debug checklist**: . Check text color contrast against the gradient background specifically for web rendering. 
-   - **Why fix this issue and what will be achieved with the fix?**: Ensures cross-platform visual consistency. (Note: Agent verified it looks fine on mobile, just a web preview artifact).
-   - **Status**: PENDING
-   - **Is recurring issue?**: N
-   - **Should Test frontend/backend/both after fix?**: Frontend.
+  *None currently blocking.* (Previous Ngrok tunnel and backend 500 errors were resolved).
 
 **In progress Task List**:
-  Task 1: Implement Global Localization (i18n) & RTL/LTR (P0)
-   - **Where to resume**: , , and all UI screens.
-   - **What will be achieved with this?**: Fulfills user's request to support 30+ languages.
-   - **Status**: IN PROGRESS. (Foundational files created, but  function needs to be applied to all text in the app).
-   - **Should Test frontend/backend/both after fix?**: Frontend.
-   - **Blocked on something**: Expo Tunnel Issue.
+  Task 1: Seed Complete Authentic Azkar Data (P0)
+   - **Where to resume**: .
+   - **What will be achieved with this?**: Fulfills user's request (Message 320) to populate all 14 categories with exact authentic Arabic texts, evidences, and repeat counts.
+   - **Status**: IN PROGRESS. 
+   - **Should Test frontend/backend/both after fix?**: Backend (ensure script runs and DB is populated), then Frontend.
 
-  Task 2: Audio Playback & Transliteration UI (P0)
+  Task 2: Generate Comprehensive Project Documentation (P0)
+   - **Where to resume**: Create a markdown file (e.g.,  or similar) and output the content to the user in Arabic.
+   - **What will be achieved with this?**: The user requested this in Message 315. They are pausing their subscription and need a complete manual of the project (Purpose, Completed Features, DB Schema, UI flow, Backend APIs, To-Do list, Tech Stack) to avoid losing context in the future.
+   - **Status**: NOT STARTED.
+
+  Task 3: Continuous Voice Tasbeeh & Auto-Transition Logic (P1)
    - **Where to resume**:  and .
-   - **What will be achieved with this?**: Allows users to hear Azkar and read pronunciations.
-   - **Status**: IN PROGRESS.
+   - **What will be achieved with this?**: The UI buttons exist, but the actual logic for *continuous* listening (not pressing per count), the 1-hour reset timer (Color changes to Gold, then resets to Green after 1 hr), and auto-scrolling to the next Zikr needs to be fully wired up as per Message 237.
+   - **Status**: IN PROGRESS (UI built, deep logic pending).
 
 **Upcoming and Future Tasks**
-- **P1**: Update Backend Database Schema for Translations & Audio Files (, ,  tables as requested in Msg 90).
-- **P1**: Update Admin Dashboard UI/API to manage Translations and upload Audio files.
-- **P1**: Integrate actual  and Aladhan API for Prayer Times ().
-- **P1**: Integrate  for Voice Tasbeeh.
-- **P1**: Integrate  (OpenAI GPT-4) for the AI Assistant.
+- **P0**: Run the  script and verify data appears correctly in the app.
+- **P0**: Write and deliver the Comprehensive Project Documentation (Msg 315).
+- **P1**: Implement the 1-hour reset timer logic for completed Azkar (Green -> Gold -> Reset).
+- **P1**: Implement auto-scroll and auto-transition to the next Azkar on completion.
+- **P1**: Implement Continuous Voice Recognition using .
+- **P2**: Integrate actual  and Aladhan API for Prayer Times ().
+- **P2**: Integrate  (OpenAI GPT-4) for the AI Assistant.
 
 **Completed work in this session**
-- Complete UI/UX Overhaul with Gradients, Animations, and custom components (DONE)
-- Created , ,  (DONE)
-- Applied new design to , , , ,  (DONE)
-- Created foundational files for i18n (, , ) (DONE)
-- Created foundational Audio features (, ) (DONE)
+- Fixed Expo Ngrok Tunnel startup issue (DONE)
+- Applied  and RTL/LTR across the whole app, set Arabic as default (DONE)
+- Added , ,  schemas to DB (DONE)
+- Implemented Transliteration UI and Listen (TTS) buttons (DONE)
+- Updated Azkar List UI to show actual texts, individual counters, and progress bars (DONE)
+- Fixed touch collision on Azkar list cards (Added Next button) (DONE)
+- Fixed backend 500 error for Azkar details endpoint ( serialization) (DONE)
 
 **Earlier issues found/mentioned but not fixed**
-None currently unaddressed. 
+None.
 
 **Known issue recurrence from previous fork**
-- **Issue**: Expo Metro Bundler cache / Ngrok tunnel connection issues.
-- **Recurrence count**: 3+
-- **Status**: IN PROGRESS (Currently blocking).
+- **Issue**: Expo Metro Bundler cache / Ngrok tunnel connection timeout.
+- **Recurrence count**: 4+
+- **Status**: RESOLVED (but keep in mind). If the app fails to load, expo: ERROR (not running)
+expo: started or clearing cache usually fixes it.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Frontend**: React Native, Expo Router, , ,  (i18n), /.
+- **Frontend**: React Native, Expo Router, , Reanimated,  (TTS).
 - **Backend**: FastAPI, MongoDB (AsyncIOMotorClient).
+- **Architecture**: Smart Tasbeeh System requires tracking individual Zikr state () rather than just a global counter.
 
 **key DB schema**
-- Existing: , , , 
-- **Pending Creation (from Msg 90)**: , , .
+- ,  (has , , , etc.).
+-  (30 langs), .
+-  (Tracks individual Zikr counts, , , ).
 
 **changes in tech stack**
-- Added  and  for localization.
-- Added  (and planning ) for audio functionality.
+- Added  for audio playback.
 
 **All files of reference**
--  (Created: Localization dictionaries)
--  (Created: Manages RTL/LTR and active language)
--  (Created: Handles TTS/Audio)
--  (Created: Reusable premium UI components)
+-  (Created: To seed the massive list of authentic Azkar)
+-  (Updated: Complex UI for lists with individual counters)
+-  (Updated: Azkar details)
+-  (Updated: Added APIs for new tables and fixed  serialization)
 
 **Areas that need refactoring**
-- All existing screens (e.g., , ) need to be refactored to use the  hook instead of hardcoded Arabic strings.
+- The Voice Tasbeeh button currently just increments the counter manually. It needs to be refactored to use  for *continuous* listening as requested by the user.
 
 **key api endpoints**
-- Standard CRUD for Admin. (Will need new endpoints for  and ).
+- 
+-  (Fixed serialization issue here)
+- 
 
 **Critical Info for New Agent**
-- **CRITICAL INSTRUCTION FROM USER**: In Message 90, the user explicitly stated: *لا تسألني أي أسئلة إضافية. قم بتنفيذ جميع التحسينات المذكورة أعلاه الآن* (**Do NOT ask any additional questions. Implement all the mentioned improvements now**). Do not stop to ask for clarification on the i18n or audio features. Just build them.
-- Be careful with the current Ngrok Expo Tunnel error. Use  immediately if a standard server restart or cache clear ([18:32:53] Starting project at /app/frontend) does not fix it.
-- **RTL/LTR**: The app MUST dynamically flip the UI based on the selected language ( flag).
+- **URGENT DOCUMENTATION REQUEST**: In Message 315, the user explicitly asked for a highly detailed manual of the project (DB schemas, UI flow, APIs, To-Do list) because they are pausing their subscription. **Do not ignore this.**
+- **MASSIVE DATA SEED**: In Message 320, the user provided exact texts for 14 categories of Azkar. The script  was just created to handle this. You must run it successfully.
+- Do NOT ask the user questions. They repeatedly stated لا تسألني أي أسئلة إضافية (Do not ask me any additional questions). Just execute the tasks.
 
 **documents and test reports created in this job**
-- None in this specific run.
+- None yet. A comprehensive documentation file MUST be created to satisfy Message 315.
 
 **Last 10 User Messages and any pending HUMAN messages**
-- **Msg 89/90**: User provided a massive, highly detailed specification for adding 30+ languages, Audio playback, transliteration, bilingual UI (Arabic + Translation), and Admin Translation Management. User explicitly commanded the agent NOT to ask questions and just start.
-- **Msg 93**: User confirmed to start the implementation immediately (نعم ابداء).
+- **Msg 276**: User reported a bug where clicking an Azkar card didn't open the details page. (Fixed).
+- **Msg 315**: User requested a comprehensive project documentation summary to save their progress before pausing their subscription.
+- **Msg 320**: User provided a massive, exhaustive list of exact Arabic texts, evidence, and rules for all 14 categories to be seeded into the database, asking for the app to be made fully authentic and ready for release.
 
 **Project Health Check:**
-- **Broken**: Frontend dev server (Ngrok tunnel timeout error).
-- **Mocked**: AI Chat, Voice Recognition, Prayer Times.
+- **Broken**: None.
+- **Mocked**: Continuous Voice Recognition, AI Assistant.
 
 **3rd Party Integrations**
 - RevenueCat (Subscriptions) — requires User API Key.
@@ -127,25 +120,10 @@ None currently unaddressed.
 - Aladhan API (Prayer Times) - Free external API (Pending).
 
 **Testing status**
-- Testing agent used after significant changes: NO (UI verified manually via screenshot tool).
-- Troubleshoot agent used after agent stuck in loop: NO (Might be needed for current Ngrok issue).
+- Testing agent used after significant changes: NO.
+- Troubleshoot agent used after agent stuck in loop: NO.
 - Test files created: None.
-- Known regressions: Expo server connection.
-
-**Credentials to test flow:**
-- Admin dashboard access: Navigate to Settings tab -> Tap the logo 5 times quickly.
+- Known regressions: None currently.
 
 **What agent forgot to execute**
-- Agent has not yet updated the FastAPI backend to include the new database tables (, , ) requested by the user in the Message 90 PRD. 
-
-**Debugging checklist for current issue**
-    Issue: Expo server failing to start with Ngrok tunnel error.
-    Frontend files to check:  (check newly added dependencies),  (verify tunnel configs aren't corrupted).
-    Terminal: Run env: load .env
-env: export EXPO_TUNNEL_SUBDOMAIN EXPO_PACKAGER_HOSTNAME EXPO_PUBLIC_BACKEND_URL EXPO_USE_FAST_RESOLVER METRO_CACHE_ROOT
-Starting project at /app/frontend
-Fast resolver is enabled.
-Starting Metro Bundler
-warning: Bundler cache is empty, rebuilding (this may take a minute)
-Waiting on http://localhost:8081
-Logs for your project will appear below. to clear cache. If it fails 2 more times, invoke  immediately as per system prompts.</analysis>
+- Agent started reading files to fulfill the documentation request (Msg 315) but was interrupted by the user's next prompt (Msg 320). The documentation MUST still be provided.</analysis>
