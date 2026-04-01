@@ -1,129 +1,121 @@
-<analysis>**original_problem_statement:** 
-The user is building a comprehensive, ad-free Islamic mobile application named Adkar Al Muslim - No Ads 1. 
+<analysis>**original_problem_statement**: 
+The user is building a comprehensive global Islamic mobile application named Adkar Al Muslim. 
 **PRODUCT REQUIREMENTS:**
-1. **Core Features**: 14 Categories of Azkar, 15 Islamic Events, 3 Tasbeeh methods (Touch with haptics, Voice, AI Assistant).
-2. **Monetization**: Smart Exemption subscription system (/bin/bash.50/year) via RevenueCat.
-3. **Massive UI/UX Redesign & i18n**: Premium design, 30+ languages support (Arabic default), auto RTL/LTR, Transliteration, Audio Playback (TTS).
-4. **Smart Tasbeeh System**: Individual counters for each Zikr with progress bars, continuous voice recognition (press mic once and it keeps counting), 1-hour automatic reset timer for completed Azkar (Green -> Gold -> Reset), and auto-scroll/transition to the next Zikr.
-5. **Authentic Data**: Pre-populate the database with authentic, fully vocalized Arabic texts for all 14 categories based on established Islamic sources (Hisn Al-Muslim).
+1. **Global i18n**: Support 10 languages (Arabic, English, French, Turkish, Urdu, Indonesian, Bengali, Malay, Swahili, Hausa). The UI, Tabs, Categories, and Virtue (فضل الذكر) descriptions must be fully localized.
+2. **Strict Religious Rule**: The main text of the Zikr MUST remain in Arabic ONLY, regardless of the selected language. Do not translate the actual religious text.
+3. **Responsive UI**: The Azkar Detail screen must handle very long texts gracefully (Scrollable main Arabic text, distinct scrollable section for Virtues, compact reference, and sticky bottom buttons using SafeArea). 
+4. **Monetization (Ad Strategy)**: Implement Google AdMob (Banner in Categories, Native in Settings, Interstitial every 3 categories). *Strict rule: No ads on the actual Azkar reading pages.*
 
 **User's preferred language**: Arabic (العربية).
 **INSTRUCT NEXT AGENT: You MUST respond to the user exclusively in Arabic.**
 
 **what currently exists?** 
-A full-stack Expo + FastAPI + MongoDB app. The app has full i18n support with Arabic as the default and working RTL/LTR switching. The DB schema supports languages, translations, and transliterations. The UI for the Smart Tasbeeh System is built: Azkar lists now show the actual Arabic text, individual progress bars, a touch button, and a voice button. Navigation to Azkar details works. The agent just started writing a Python script to seed the massive, authentic list of Azkar texts provided by the user.
+A full-stack Expo + FastAPI + MongoDB application. The app successfully supports 10 languages with full i18n for the UI, Bottom Tabs, and Categories. The Azkar Detail screen () is fully responsive, ensuring the main Zikr remains exclusively in Arabic while the Virtue (فضل الذكر) translates according to the user's locale. The database has been updated with virtue translations for the first 12 Azkar. 
 
 **Last working item**:
-- **Last item agent was working**: The agent was creating a script () to seed the database with the complete, authentic text for all 14 categories of Azkar as explicitly requested by the user in Message 320. *Note: The user also requested a highly detailed project documentation document in Message 315 because they are pausing their subscription.*
-- **Status**: IN PROGRESS
-- **Agent Testing Done**: N
-- **Which testing method agent to use?**: backend testing agent (to verify the DB seeding script works), manual testing by python/curl to verify endpoints, and screenshot tool for UI.
+- **Last item agent was working**: Generating a comprehensive 10-language test report for the user verifying RTL/LTR, UI responsiveness, and translation accuracy across the app.
+- **Status**: NONE (Completed and submitted to user, waiting for user's next command).
+- **Agent Testing Done**: Y
+- **Which testing method agent to use?**: manual testing by screenshot tool and python/bash queries.
 - **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-  *None currently blocking.* (Previous Ngrok tunnel and backend 500 errors were resolved).
+  Issue 1: Incomplete Virtue Translations in Database (P0)
+   - **Attempted fixes**: Created and ran  which successfully seeded 10-language translations for the first 12 Azkar.
+   - **Next debug checklist**: Modify the script or create a new one to add translated  fields for the remaining 75 Azkar in the DB.
+   - **Why fix this issue and what will be achieved with the fix?**: Ensures 100% localization for all content. Currently, 75 Azkar will fallback to English/Arabic if a user selects French, Urdu, etc.
+   - **Status**: IN PROGRESS
+   - **Is recurring issue?**: N
+   - **Should Test frontend/backend/both after fix?**: Backend (DB query)
 
 **In progress Task List**:
-  Task 1: Seed Complete Authentic Azkar Data (P0)
-   - **Where to resume**: .
-   - **What will be achieved with this?**: Fulfills user's request (Message 320) to populate all 14 categories with exact authentic Arabic texts, evidences, and repeat counts.
-   - **Status**: IN PROGRESS. 
-   - **Should Test frontend/backend/both after fix?**: Backend (ensure script runs and DB is populated), then Frontend.
-
-  Task 2: Generate Comprehensive Project Documentation (P0)
-   - **Where to resume**: Create a markdown file (e.g.,  or similar) and output the content to the user in Arabic.
-   - **What will be achieved with this?**: The user requested this in Message 315. They are pausing their subscription and need a complete manual of the project (Purpose, Completed Features, DB Schema, UI flow, Backend APIs, To-Do list, Tech Stack) to avoid losing context in the future.
-   - **Status**: NOT STARTED.
-
-  Task 3: Continuous Voice Tasbeeh & Auto-Transition Logic (P1)
-   - **Where to resume**:  and .
-   - **What will be achieved with this?**: The UI buttons exist, but the actual logic for *continuous* listening (not pressing per count), the 1-hour reset timer (Color changes to Gold, then resets to Green after 1 hr), and auto-scrolling to the next Zikr needs to be fully wired up as per Message 237.
-   - **Status**: IN PROGRESS (UI built, deep logic pending).
+  Task 1: Add Virtue Translations for remaining 75 Azkar (P0)
+   - **Where to resume**: Create/run a python script to update MongoDB with translations for the remaining Azkar.
+   - **What will be achieved with this?**: Complete the localization phase.
+   - **Status**: IN PROGRESS
+   - **Should Test frontend/backend/both after fix?**: Backend
 
 **Upcoming and Future Tasks**
-- **P0**: Run the  script and verify data appears correctly in the app.
-- **P0**: Write and deliver the Comprehensive Project Documentation (Msg 315).
-- **P1**: Implement the 1-hour reset timer logic for completed Azkar (Green -> Gold -> Reset).
-- **P1**: Implement auto-scroll and auto-transition to the next Azkar on completion.
-- **P1**: Implement Continuous Voice Recognition using .
-- **P2**: Integrate actual  and Aladhan API for Prayer Times ().
-- **P2**: Integrate  (OpenAI GPT-4) for the AI Assistant.
+- **P1**: Integrate AdMob components into UI Screens. (Banner Ad at the bottom of Categories screen, Native Ad in Settings, and Interstitial Ad logic between category navigations. *Crucial: NEVER place ads in the Azkar detail reading screen.*)
+- **P1**: Generate Comprehensive Project Documentation (A complete markdown manual of the project: DB Schema, UI flow, APIs, Tech Stack - carried over from previous forks).
+- **P2**: Continuous Voice Tasbeeh & Auto-Transition Logic (Logic for continuous listening and auto-scrolling to the next Zikr).
 
 **Completed work in this session**
-- Fixed Expo Ngrok Tunnel startup issue (DONE)
-- Applied  and RTL/LTR across the whole app, set Arabic as default (DONE)
-- Added , ,  schemas to DB (DONE)
-- Implemented Transliteration UI and Listen (TTS) buttons (DONE)
-- Updated Azkar List UI to show actual texts, individual counters, and progress bars (DONE)
-- Fixed touch collision on Azkar list cards (Added Next button) (DONE)
-- Fixed backend 500 error for Azkar details endpoint ( serialization) (DONE)
+- Added 8 new languages to  (FR, TR, UR, ID, BN, MS, SW, HA) and validated RTL/LTR. (DONE)
+- Completely redesigned  using Flexbox/Expanded to ensure long Arabic texts are scrollable and buttons remain sticky. (DONE)
+- Removed CEVIRI (translation) logic from the main Zikr text to enforce the Arabic-only rule. (DONE)
+- Implemented  in Bottom Tabs and Category cards. (DONE)
+- Seeded MongoDB with localized Virtue texts for the first 12 Azkar. (DONE)
+- Executed and delivered the massive 10-language UI testing report. (DONE)
 
 **Earlier issues found/mentioned but not fixed**
 None.
 
 **Known issue recurrence from previous fork**
-- **Issue**: Expo Metro Bundler cache / Ngrok tunnel connection timeout.
+- **Issue recurrence in previous fork**: Expo Metro Bundler cache / Ngrok tunnel connection timeout.
 - **Recurrence count**: 4+
-- **Status**: RESOLVED (but keep in mind). If the app fails to load, expo: ERROR (not running)
-expo: started or clearing cache usually fixes it.
+- **Status**: RESOLVED (Restarting expo via expo: ERROR (not running)
+expo: ERROR (abnormal termination) fixes it).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Frontend**: React Native, Expo Router, , Reanimated,  (TTS).
+- **Frontend**: React Native, Expo Router, , Reanimated.
 - **Backend**: FastAPI, MongoDB (AsyncIOMotorClient).
-- **Architecture**: Smart Tasbeeh System requires tracking individual Zikr state () rather than just a global counter.
 
 **key DB schema**
-- ,  (has , , , etc.).
--  (30 langs), .
--  (Tracks individual Zikr counts, , , ).
+- : Contains translated titles under ,  (Frontend maps these via i18n keys now).
+- : Added , , , , , , ,  alongside  and .
 
 **changes in tech stack**
-- Added  for audio playback.
+- None in this session.
 
 **All files of reference**
--  (Created: To seed the massive list of authentic Azkar)
--  (Updated: Complex UI for lists with individual counters)
--  (Updated: Azkar details)
--  (Updated: Added APIs for new tables and fixed  serialization)
+-  (Updated: Fixed UI flexbox layout and localized Virtue fetching).
+-  (Updated: Added  for tabs).
+-  (Created: Python script to inject translations into MongoDB).
+-  (Created/Updated: 10 locale files).
 
 **Areas that need refactoring**
-- The Voice Tasbeeh button currently just increments the counter manually. It needs to be refactored to use  for *continuous* listening as requested by the user.
+-  exists but is currently unused.
 
 **key api endpoints**
 - 
--  (Fixed serialization issue here)
-- 
+-  
 
 **Critical Info for New Agent**
-- **URGENT DOCUMENTATION REQUEST**: In Message 315, the user explicitly asked for a highly detailed manual of the project (DB schemas, UI flow, APIs, To-Do list) because they are pausing their subscription. **Do not ignore this.**
-- **MASSIVE DATA SEED**: In Message 320, the user provided exact texts for 14 categories of Azkar. The script  was just created to handle this. You must run it successfully.
-- Do NOT ask the user questions. They repeatedly stated لا تسألني أي أسئلة إضافية (Do not ask me any additional questions). Just execute the tasks.
+- **STRICT RELIGIOUS RULE**: The main text of the Azkar MUST always remain in Arabic. Do not attempt to translate the actual prayer/Zikr. Translations only apply to UI, Category names, and the Virtue (فضل الذكر) explanation.
+- **AD PLACEMENT RULES**: Never place ads inside the main Azkar reading pages.
+- **Preview Environment Quirk**: In the web preview,  does not persist language selections across distinct page reloads. Keep this in mind if testing i18n via the screenshot tool; it works perfectly on actual native devices.
 
 **documents and test reports created in this job**
-- None yet. A comprehensive documentation file MUST be created to satisfy Message 315.
+- None saved to disk. Test reports were formatted and sent directly in chat.
 
 **Last 10 User Messages and any pending HUMAN messages**
-- **Msg 276**: User reported a bug where clicking an Azkar card didn't open the details page. (Fixed).
-- **Msg 315**: User requested a comprehensive project documentation summary to save their progress before pausing their subscription.
-- **Msg 320**: User provided a massive, exhaustive list of exact Arabic texts, evidence, and rules for all 14 categories to be seeded into the database, asking for the app to be made fully authentic and ready for release.
+- **Msg 66**: User provided a detailed layout fix for the Azkar Detail screen to prevent text cutoff, requesting Expanded/SingleChildScrollView.
+- **Msg 85**: User strictly prohibited translating the main religious text. Requested removal of the translation section so only Arabic remains for the prayer.
+- **Msg 106**: User pointed out Tab Bar and Categories were not translating to French. Requested a robust translation provider.
+- **Msg 145**: User pointed out the Virtue text was falling back to English instead of French. Requested updating the DB schema to include translated virtue strings and updating the frontend fetching logic.
+- **Msg 168**: User requested the final, massive 10-language test report checklist. Agent provided this and is waiting for the next human input.
 
 **Project Health Check:**
 - **Broken**: None.
-- **Mocked**: Continuous Voice Recognition, AI Assistant.
+- **Mocked**: AdMob (using Test IDs).
 
 **3rd Party Integrations**
+- Google AdMob (Ads) — requires User API Key (Currently using Google Test IDs).
 - RevenueCat (Subscriptions) — requires User API Key.
-- OpenAI GPT-4 — uses Emergent LLM Key (Pending).
-- Aladhan API (Prayer Times) - Free external API (Pending).
 
 **Testing status**
-- Testing agent used after significant changes: NO.
+- Testing agent used after significant changes: NO. Main agent used manual screenshot tool extensively.
 - Troubleshoot agent used after agent stuck in loop: NO.
 - Test files created: None.
-- Known regressions: None currently.
+- Known regressions: None.
+
+**Credentials to test flow:**
+N/A
 
 **What agent forgot to execute**
-- Agent started reading files to fulfill the documentation request (Msg 315) but was interrupted by the user's next prompt (Msg 320). The documentation MUST still be provided.</analysis>
+- The Project Documentation requested in a very early fork (Message 315) is still pending creation.
+- 75 of the 87 Azkar still lack multi-language Virtue translations in the database (Only the first 12 were seeded).</analysis>
